@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <errno.h> //remove this later
 #include "betterassert.h"
 
 tfs_params tfs_default_params() {
@@ -248,27 +248,27 @@ int tfs_unlink(char const *target) {
 int tfs_copy_from_external_fs(char const *source_path, char const *dest_path) {
    
     //open source file
-    FILE *source_fd = fopen(source_path, "r");
+    FILE * source_fd = fopen(source_path, "r");
     if (source_fd == NULL) {
+      fprintf(stderr, "open error: %s\n", strerror(errno));
         return -1;
     }
-
     //open dest file
-
-    int dest_fd = tfs_open (dest_path, TFS_O_CREAT);
+    int dest_fd = tfs_open(dest_path, TFS_O_CREAT);
     if (dest_fd == -1) {
         return -1;
     }
 
-    //read from source file and write to dest file
-    char buffer[1024];
-    size_t bytes_read = 0;
-    while ((bytes_read = fread(buffer, 1, 1024, source_fd)) > 0) {
-        if (tfs_write(dest_fd, buffer, bytes_read) == -1) {
+    //read from source file and copy to dest file
+    char buffer[128];
+    memset(buffer,0,sizeof(buffer));
+    size_t bytes_read;
+    while ((bytes_read = fread(buffer, sizeof(char), 128, source_fd)) > 0) {
+        if (tfs_write(dest_fd, buffer, strlen(buffer)* sizeof(char)) == -1) {
             return -1;
         }
     }
-    
+
     //close source file
     fclose(source_fd);
     //close dest file
