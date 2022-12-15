@@ -264,7 +264,7 @@ int tfs_copy_from_external_fs(char const *source_path, char const *dest_path) {
     memset(buffer,0,sizeof(buffer));
     size_t bytes_read;
     while ((bytes_read = fread(buffer, sizeof(char), 128, source_fd)) > 0) {
-        if (tfs_write(dest_fd, buffer, strlen(buffer)* sizeof(char)) == -1) {
+        if (tfs_write(dest_fd, buffer, bytes_read* sizeof(char)) == -1) {
             return -1;
         }
     }
