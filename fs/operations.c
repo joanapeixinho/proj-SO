@@ -21,7 +21,7 @@ tfs_params tfs_default_params() {
 int tfs_init(tfs_params const *params_ptr) {
     tfs_params params;
     if (params_ptr != NULL) {
-        params = *params_ptr;
+        params = *params_ptr; 
     } else {
         params = tfs_default_params();
     }
@@ -141,14 +141,26 @@ int tfs_sym_link(char const *target, char const *link_name) {
     PANIC("TODO: tfs_sym_link");
 }
 
-int tfs_link(char const *target, char const *link_name) {
-    (void)target;
-    (void)link_name;
-    // ^ this is a trick to keep the compiler from complaining about unused
-    // variables. TODO: remove
 
-    PANIC("TODO: tfs_link");
+
+
+int tfs_link(char const *target, char const *link_name) {
+    
+    if (!valid_pathname(target) || !valid_pathname(link_name)) {
+        return -1;
+    } //idk if this is necessary
+
+    int inumber = tfs_lookup(target, inode_get(ROOT_DIR_INUM));
+    if (inumber == -1) {
+        return -1;
+    }
+    if (add_dir_entry(inode_get(ROOT_DIR_INUM), link_name, inumber) == -1) {
+        return -1;
+    }
+    return 0;
+
 }
+
 
 int tfs_close(int fhandle) {
     open_file_entry_t *file = get_open_file_entry(fhandle);
