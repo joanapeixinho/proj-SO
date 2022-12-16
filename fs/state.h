@@ -17,16 +17,17 @@ typedef struct {
     int d_inumber;
 } dir_entry_t;
 
-typedef enum { T_FILE, T_DIRECTORY } inode_type;
+typedef enum { T_FILE, T_DIRECTORY,T_SYMLINK } inode_type;
 
 /**
  * Inode
  */
 typedef struct {
-    inode_type i_node_type;
-
-    size_t i_size;
-    int i_data_block;
+    
+    inode_type i_node_type; // type of inode
+    size_t i_size; // size of file in bytes
+    int i_data_block; // data block number
+    int i_links; // number of hard links to this inode
 
     // in a more complete FS, more fields could exist here
 } inode_t;

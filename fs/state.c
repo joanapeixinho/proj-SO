@@ -214,6 +214,7 @@ int inode_create(inode_type i_type) {
             // ensure fields are initialized
             inode->i_size = 0;
             inode->i_data_block = -1;
+           
 
             // run regular deletion process
             inode_delete(inumber);
@@ -222,6 +223,7 @@ int inode_create(inode_type i_type) {
 
         inode_table[inumber].i_size = BLOCK_SIZE;
         inode_table[inumber].i_data_block = b;
+        inode_table[inumber].i_links = 1;
 
         dir_entry_t *dir_entry = (dir_entry_t *)data_block_get(b);
         ALWAYS_ASSERT(dir_entry != NULL,
@@ -235,6 +237,11 @@ int inode_create(inode_type i_type) {
         // In case of a new file, simply sets its size to 0
         inode_table[inumber].i_size = 0;
         inode_table[inumber].i_data_block = -1;
+        inode_table[inumber].i_links = 1;
+        break;
+    case T_SYMLINK:
+        //set size in the symlink's inode to length of the path of file to which it points
+        // inode_table[inumber].i_size = strlen(); in comment cause I dont know how to get the length of the path yet
         break;
     default:
         PANIC("inode_create: unknown file type");
@@ -279,6 +286,35 @@ inode_t *inode_get(int inumber) {
 
     insert_delay(); // simulate storage access delay to inode
     return &inode_table[inumber];
+}
+
+/**
+ * Obtain the type of an inode.
+ *
+ * Input:
+ *   - inumber: inode's number
+ *
+ * Returns inode's type.
+ */
+inode_type inode_get_type(int inumber) {
+    ALWAYS_ASSERT(valid_inumber(inumber), "inode_get_type: invalid inumber");
+
+    insert_delay(); // simulate storage access delay to inode
+    return inode_table[inumber].i_node_type;
+}
+
+/**
+ * Increment the link count of an inode.
+ *
+ * Input:
+ *   - inumber: inode's number
+ */
+
+void inc_link (int inumber) {
+    ALWAYS_ASSERT(valid_inumber(inumber), "inc_link: invalid inumber");
+
+    insert_delay(); // simulate storage access delay to inode
+    inode_table[inumber].i_links++;
 }
 
 /**

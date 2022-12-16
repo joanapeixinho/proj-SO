@@ -135,30 +135,40 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
 int tfs_sym_link(char const *target, char const *link_name) {
     (void)target;
     (void)link_name;
-    // ^ this is a trick to keep the compiler from complaining about unused
-    // variables. TODO: remove
+    
+    int inum = inode_create(T_SYMLINK);
+    if (inum == -1) {
+        return -1;
+    }
+    inode_t *inode = inode_get(inum);
+    if (inode == NULL) {
+        return -1;
+    }
+    
 
-    PANIC("TODO: tfs_sym_link");
+    
 }
 
 
-
+//create a hard link
 
 int tfs_link(char const *target, char const *link_name) {
     
-    if (!valid_pathname(target) || !valid_pathname(link_name)) {
+    if (!valid_pathname(target) || !valid_pathname(link_name) ) {
         return -1;
-    } //idk if this is necessary
+    } 
 
-    int inumber = tfs_lookup(target, inode_get(ROOT_DIR_INUM));
-    if (inumber == -1) {
+    //get the inumber of the target file
+    int inum = tfs_lookup(target, inode_get(ROOT_DIR_INUM));
+
+    if (inum == -1 || get_inode_type(inum) == T_SYMLINK) {
         return -1;
     }
-    if (add_dir_entry(inode_get(ROOT_DIR_INUM), link_name, inumber) == -1) {
+    if (add_dir_entry(inode_get(ROOT_DIR_INUM), link_name, inum) == -1) {
         return -1;
     }
+    inc_link_count(inum);
     return 0;
-
 }
 
 
