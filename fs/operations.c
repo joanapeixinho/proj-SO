@@ -36,7 +36,6 @@ int tfs_init(tfs_params const *params_ptr) {
     if (root != ROOT_DIR_INUM) {
         return -1;
     }
-
     return 0;
 }
 
@@ -79,11 +78,17 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
     if (!valid_pathname(name)) {
         return -1;
     }
-
+    
     inode_t *root_dir_inode = inode_get(ROOT_DIR_INUM);
     ALWAYS_ASSERT(root_dir_inode != NULL,
                   "tfs_open: root dir inode must exist");
+    
     int inum = tfs_lookup(name, root_dir_inode);
+    
+    if(inum != -1 && inode_get_type(inum) == T_SYMLINK) {
+            name = get_target_filename(name);
+    }
+    
     size_t offset;
 
     if (inum >= 0) {
@@ -109,16 +114,14 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
     
     else if (mode & TFS_O_CREAT) {
         // The file does not exist; the mode specified that it should be created
-        // Create inode
-        inum = inode_create(T_FILE);
+        // Create inode  
+            inum = inode_create(T_FILE);
+        
+
         if (inum == -1) {
             return -1; // no space in inode table
         }
-
-        if (inode_get_type(inum) == T_SYMLINK) {
-          //get the target file name from the soft link
-           name = get_target_filename(name);
-        }
+        
         // Add entry in the root directory
         if (add_dir_entry(root_dir_inode, name + 1, inum) == -1) {
             inode_delete(inum);
@@ -142,20 +145,22 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
 int tfs_sym_link(char const *target, char const *link_name) {
 
     int inum = inode_create(T_SYMLINK);
-    if (inum == -1) {
+    int inum_target = tfs_lookup(target, inode_get(ROOT_DIR_INUM));
+    if (inum == -1 || inum_target == -1) {
         return -1;
     }
+
     inode_t *inode = inode_get(inum);
+    inode_t *inode_target = inode_get(inum_target);
     if (inode == NULL) {
         return -1;
     }
     
-    tfs_open(link_name, TFS_O_CREAT);
-    //write the path to the target file in soft link
-    tfs_write(inum, link_name, strlen(link_name)); 
-    //add the soft link to the root directory
-    add_dir_entry(inode, target + 1, inum);
-
+    int fhandle = tfs_open(link_name, TFS_O_APPEND);
+    tfs_write(fhandle, target, strlen(target));
+    add_dir_entry(inode_target, link_name + 1, inum);
+    tfs_close(fhandle); 
+    
     return 0;
 }
 
@@ -172,7 +177,7 @@ int tfs_link(char const *target, char const *link_name) {
 
     //get the inumber of the target file
     int inum = tfs_lookup(target, root_dir_inode);
-
+    //printf( "type in creating hard link = %d\n", inode_get_type(inum));
     if (inum == -1 || inode_get_type(inum) == T_SYMLINK) {
         return -1;
     }
