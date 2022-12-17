@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string.h>
 #include <errno.h> //remove this later
 #include "betterassert.h"
 
@@ -104,7 +105,9 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
         } else {
             offset = 0;
         }
-    } else if (mode & TFS_O_CREAT) {
+    } 
+    
+    else if (mode & TFS_O_CREAT) {
         // The file does not exist; the mode specified that it should be created
         // Create inode
         inum = inode_create(T_FILE);
@@ -112,6 +115,10 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
             return -1; // no space in inode table
         }
 
+        if (inode_get_type(inum) == T_SYMLINK) {
+          //get the target file name from the soft link
+           name = get_target_filename(name);
+        }
         // Add entry in the root directory
         if (add_dir_entry(root_dir_inode, name + 1, inum) == -1) {
             inode_delete(inum);
@@ -133,9 +140,7 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
 }
 
 int tfs_sym_link(char const *target, char const *link_name) {
-    (void)target;
-    (void)link_name;
-    
+
     int inum = inode_create(T_SYMLINK);
     if (inum == -1) {
         return -1;
@@ -145,8 +150,13 @@ int tfs_sym_link(char const *target, char const *link_name) {
         return -1;
     }
     
+    tfs_open(link_name, TFS_O_CREAT);
+    //write the path to the target file in soft link
+    tfs_write(inum, link_name, strlen(link_name)); 
+    //add the soft link to the root directory
+    add_dir_entry(inode, target, inum);
 
-    
+    return 0;
 }
 
 
@@ -163,7 +173,7 @@ int tfs_link(char const *target, char const *link_name) {
     //get the inumber of the target file
     int inum = tfs_lookup(target, root_dir_inode);
 
-    if (inum == -1 || get_inode_type(inum) == T_SYMLINK) {
+    if (inum == -1 || inode_get_type(inum) == T_SYMLINK) {
         return -1;
     }
     if (add_dir_entry(root_dir_inode, link_name, inum) == -1) {

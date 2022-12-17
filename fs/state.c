@@ -235,16 +235,14 @@ int inode_create(inode_type i_type) {
             dir_entry[i].d_inumber = -1;
         }
     } break;
-    case T_FILE:
+    case T_SYMLINK:
+    case T_FILE :
         // In case of a new file, simply sets its size to 0
         inode_table[inumber].i_size = 0;
         inode_table[inumber].i_data_block = -1;
         inode_table[inumber].i_links = 1;
         break;
-    case T_SYMLINK:
-        //set size in the symlink's inode to length of the path of file to which it points
-        // inode_table[inumber].i_size = strlen(); in comment cause I dont know how to get the length of the path yet
-        break;
+   
     default:
         PANIC("inode_create: unknown file type");
     }
@@ -312,7 +310,7 @@ inode_type inode_get_type(int inumber) {
  *   - inumber: inode's number
  */
 
-void inc_link (int inumber) {
+void inc_link_count (int inumber) {
     ALWAYS_ASSERT(valid_inumber(inumber), "inc_link: invalid inumber");
 
     insert_delay(); // simulate storage access delay to inode
@@ -552,4 +550,23 @@ open_file_entry_t *get_open_file_entry(int fhandle) {
     }
 
     return &open_file_table[fhandle];
+}
+
+/**
+ * Obtain the file name from a path.
+ *
+ * Input:
+ *   - path: path to a file
+ *
+ * Returns a pointer to a newly allocated string containing the file name.
+ */
+
+const char *get_target_filename(char const *path)
+{
+        const char *s = strrchr(path, '/');
+        if(s==NULL) {
+                return strdup(path);
+        } else {
+                return strdup(s + 1);
+        }
 }
