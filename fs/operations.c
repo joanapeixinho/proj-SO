@@ -154,7 +154,7 @@ int tfs_sym_link(char const *target, char const *link_name) {
     //write the path to the target file in soft link
     tfs_write(inum, link_name, strlen(link_name)); 
     //add the soft link to the root directory
-    add_dir_entry(inode, target, inum);
+    add_dir_entry(inode, target + 1, inum);
 
     return 0;
 }
@@ -176,7 +176,7 @@ int tfs_link(char const *target, char const *link_name) {
     if (inum == -1 || inode_get_type(inum) == T_SYMLINK) {
         return -1;
     }
-    if (add_dir_entry(root_dir_inode, link_name, inum) == -1) {
+    if (add_dir_entry(root_dir_inode, link_name + 1, inum) == -1) {
         return -1;
     }
     inc_link_count(inum);
