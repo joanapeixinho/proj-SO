@@ -225,7 +225,9 @@ int inode_create(inode_type i_type) {
         inode_table[inumber].i_data_block = b;
         inode_table[inumber].i_links = 1;
 
+        //
         dir_entry_t *dir_entry = (dir_entry_t *)data_block_get(b);
+        
         ALWAYS_ASSERT(dir_entry != NULL,
                       "inode_create: data block freed while in use");
 
@@ -439,7 +441,7 @@ int find_in_dir(inode_t const *inode, char const *sub_name) {
  * Allocate a new data block.
  *
  * Returns block number/index if successful, -1 otherwise.
- *
+ *https://www.jamieoliver.com/recipes/eggs-recipes/pancakes-usa-stylie
  * Possible errors:
  *   - No free data blocks.
  */

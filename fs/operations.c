@@ -158,13 +158,15 @@ int tfs_link(char const *target, char const *link_name) {
         return -1;
     } 
 
+    inode_t *root_dir_inode = inode_get(ROOT_DIR_INUM);
+
     //get the inumber of the target file
-    int inum = tfs_lookup(target, inode_get(ROOT_DIR_INUM));
+    int inum = tfs_lookup(target, root_dir_inode);
 
     if (inum == -1 || get_inode_type(inum) == T_SYMLINK) {
         return -1;
     }
-    if (add_dir_entry(inode_get(ROOT_DIR_INUM), link_name, inum) == -1) {
+    if (add_dir_entry(root_dir_inode, link_name, inum) == -1) {
         return -1;
     }
     inc_link_count(inum);
