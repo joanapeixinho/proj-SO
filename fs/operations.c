@@ -288,7 +288,6 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
 }
 
 int tfs_unlink(char const *target) {
-    (void)target;
     
     if (!valid_pathname(target)) {
         return -1;
@@ -301,9 +300,16 @@ int tfs_unlink(char const *target) {
     if (inum == -1 || inum == ROOT_DIR_INUM) {
         return -1;
     }
+
     if (inode_get_type(inum) == T_DIRECTORY) {
         return -1;
     }
+
+    // if file is opened its name should not be deleted
+    if (is_in_open_file_table(inum) != -1 && inode_get_link_count(inum) == 1){
+        return -1;
+    }
+
     //remove the entry from the directory
     if (clear_dir_entry(root_dir_inode, target + 1) == -1) {
         return -1;
@@ -312,7 +318,7 @@ int tfs_unlink(char const *target) {
     dec_link_count(inum);
 
     if (inode_get_link_count(inum) == 0) {
-        inode_delete(inum);
+            inode_delete(inum);
     }
 
     return 0;
