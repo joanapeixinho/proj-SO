@@ -96,14 +96,18 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
         inode_t *inode = inode_get(inum);
         ALWAYS_ASSERT(inode != NULL,
                       "tfs_open: directory files must have an inode");
+        pthread_rwlock_wrlock(&inode->i_rwl);
 
         if(inode_get_type(inum) == T_SYMLINK && inode->i_data_block != -1) {
             name = get_target_file(inode);
             inum = tfs_lookup(name, root_dir_inode);
             if (inum == -1 ) {
+                pthread_rwlock_unlock(&inode->i_rwl);
                 return -1;
             }
+            pthread_rwlock_unlock(&inode->i_rwl);
             inode = inode_get(inum);
+            pthread_rwlock_wrlock(&inode->i_rwl);
         }
 
         // Truncate (if requested)
@@ -119,6 +123,7 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
         } else {
             offset = 0;
         }
+        pthread_rwlock_unlock(&inode->i_rwl);
     } 
     
     else if (mode & TFS_O_CREAT) {
@@ -168,7 +173,9 @@ int tfs_sym_link(char const *target, char const *link_name) {
     }
     
 
-    add_dir_entry(root_dir, link_name + 1 , inum);
+    if(add_dir_entry(root_dir, link_name + 1 , inum) == -1){
+        return -1;
+    }
     
 
     int fhandle = tfs_open(link_name, TFS_O_APPEND);
