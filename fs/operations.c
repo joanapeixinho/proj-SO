@@ -86,7 +86,10 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
     
     int inum = tfs_lookup(name, root_dir_inode);
     
-
+    if (inum == -1 && !(mode & TFS_O_CREAT)) {
+        // The file does not exist and the mode specified that it should not be created
+        return -1;
+    }
     
     size_t offset;
 
@@ -98,9 +101,12 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
         if(inode_get_type(inum) == T_SYMLINK && inode->i_data_block != -1) {
             name = get_target_file(inode);
             inum = tfs_lookup(name, root_dir_inode);
+            if (inum == -1 ) {
+                return -1;
+            }
             inode = inode_get(inum);
         }
-    
+        
         // Truncate (if requested)
         if (mode & TFS_O_TRUNC) {
             if (inode->i_size > 0) {
@@ -284,10 +290,34 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
 
 int tfs_unlink(char const *target) {
     (void)target;
-    // ^ this is a trick to keep the compiler from complaining about unused
-    // variables. TODO: remove
+    
+    if (!valid_pathname(target)) {
+        return -1;
+    }
 
-    PANIC("TODO: tfs_unlink");
+    inode_t *root_dir_inode = inode_get(ROOT_DIR_INUM);
+
+    int inum = tfs_lookup(target, root_dir_inode);
+
+    if (inum == -1 || inum == ROOT_DIR_INUM) {
+        return -1;
+    }
+    if (inode_get_type(inum) == T_DIRECTORY) {
+        return -1;
+    }
+    //remove the entry from the directory
+    if (clear_dir_entry(root_dir_inode, target + 1) == -1) {
+        return -1;
+    }
+    //decrement the link count
+    dec_link_count(inum);
+
+    if (inode_get_link_count(inum) == 0) {
+        inode_delete(inum);
+    }
+
+    return 0;
+
 }
 
 

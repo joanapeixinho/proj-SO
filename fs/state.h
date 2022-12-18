@@ -53,6 +53,8 @@ void inode_delete(int inumber);
 inode_t *inode_get(int inumber);
 inode_type inode_get_type(int inumber);
 void inc_link_count (int inumber);
+void dec_link_count (int inumber);
+int inode_get_link_count (int inumber);
 
 
 // directory operations

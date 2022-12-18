@@ -317,6 +317,36 @@ void inc_link_count (int inumber) {
 }
 
 /**
+ * Decrement the link count of an inode.
+ *
+ * Input:
+ *   - inumber: inode's number
+ */
+
+void dec_link_count (int inumber) {
+    ALWAYS_ASSERT(valid_inumber(inumber), "dec_link: invalid inumber");
+
+    insert_delay(); // simulate storage access delay to inode
+    inode_table[inumber].i_links--;
+}
+
+/**
+ * Get the link count of an inode.
+ *
+ * Input:
+ *   - inumber: inode's number
+ *
+ * Returns the link count of the inode.
+ */
+
+int inode_get_link_count (int inumber) {
+    ALWAYS_ASSERT(valid_inumber(inumber), "get_link: invalid inumber");
+
+    insert_delay(); // simulate storage access delay to inode
+    return inode_table[inumber].i_links;
+}
+
+/**
  * Clear the directory entry associated with a sub file.
  *
  * Input:
