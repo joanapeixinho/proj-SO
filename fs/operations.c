@@ -106,7 +106,7 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
             }
             inode = inode_get(inum);
         }
-        
+
         // Truncate (if requested)
         if (mode & TFS_O_TRUNC) {
             if (inode->i_size > 0) {
