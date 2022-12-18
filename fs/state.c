@@ -240,9 +240,7 @@ int inode_create(inode_type i_type) {
         inode_table[inumber].i_size = 0;
         inode_table[inumber].i_data_block = -1;
         inode_table[inumber].i_links = 1;
-        pthread_cond_init(&inode_table[inumber].i_canread, NULL); 
-        pthread_cond_init(&inode_table[inumber].i_canwrite, NULL); 
-        pthread_mutex_init(&inode_table[inumber].i_mutex, NULL); // initialize mutex
+
         break;
    
     default:

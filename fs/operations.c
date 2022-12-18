@@ -89,11 +89,6 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
     
     int inum = tfs_lookup(name, root_dir_inode);
     
-    if (inum == -1 && !(mode & TFS_O_CREAT)) {
-        // The file does not exist and the mode specified that it should not be created
-        return -1;
-    }
-    
     size_t offset;
 
     if (inum >= 0) {
@@ -101,6 +96,7 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
         inode_t *inode = inode_get(inum);
         ALWAYS_ASSERT(inode != NULL,
                       "tfs_open: directory files must have an inode");
+
         if(inode_get_type(inum) == T_SYMLINK && inode->i_data_block != -1) {
             name = get_target_file(inode);
             inum = tfs_lookup(name, root_dir_inode);
@@ -228,12 +224,6 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
     //  From the open file table entry, we get the inode
     inode_t *inode = inode_get(file->of_inumber);
     ALWAYS_ASSERT(inode != NULL, "tfs_write: inode of open file deleted");
-
-    pthread_mutex_lock(&inode->i_mutex); // lock the inode
-    
-    while (!inode->i_canwrite) {
-        pthread_cond_wait(&inode->i_canwrite, &inode->i_mutex);
-    }
     
     // Determine how many bytes to write
     size_t block_size = state_block_size();
@@ -265,10 +255,6 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
         }
     }
 
-    pthread_mutex_unlock(&inode->i_mutex); //unlock the mutex
-    pthread_cond_signal(&inode->i_canread); //signal the condition variable
-    pthread_cond_signal(&inode->i_canwrite); //signal the condition variable
-
     return (ssize_t)to_write;
 }
 
@@ -282,12 +268,6 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
     inode_t *inode = inode_get(file->of_inumber);
     ALWAYS_ASSERT(inode != NULL, "tfs_read: inode of open file deleted");
 
-    pthread_mutex_lock(&inode->i_mutex);
-    
-    while (!inode->i_canread) {
-        pthread_cond_wait(&inode->i_canread, &inode->i_mutex);
-    }
-    
     // Determine how many bytes to read
     size_t to_read = inode->i_size - file->of_offset;
     if (to_read > len) {
@@ -303,9 +283,7 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
         // The offset associated with the file handle is incremented accordingly
         file->of_offset += to_read;
     }
-
-    pthread_mutex_unlock(&inode->i_mutex);
-    pthread_cond_signal(&inode->i_canwrite); 
+    
     return (ssize_t)to_read;
 }
 
