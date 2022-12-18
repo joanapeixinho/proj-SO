@@ -334,11 +334,12 @@ int tfs_copy_from_external_fs(char const *source_path, char const *dest_path) {
     //open source file
     FILE * source_fd = fopen(source_path, "r");
     if (source_fd == NULL) {
-      fprintf(stderr, "open error: %s\n", strerror(errno));
         return -1;
     }
+
     //open dest file
-    int dest_fd = tfs_open(dest_path, TFS_O_CREAT);
+    int dest_fd = tfs_open(dest_path, TFS_O_CREAT | TFS_O_TRUNC);
+    
     if (dest_fd == -1) {
         return -1;
     }

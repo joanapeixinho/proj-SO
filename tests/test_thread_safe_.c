@@ -28,9 +28,9 @@ void *thread_read_file() {
 
 //delete file
 
-void *thread_func_delete_file () {
+void *thread_delete_file () {
     char *path = "tests/file_to_delete.txt";
-    assert(tfs_delete(path) != -1);
+    assert(tfs_unlink(path) != -1);
     return NULL;
 
 }
