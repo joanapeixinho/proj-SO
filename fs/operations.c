@@ -83,10 +83,13 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
     ALWAYS_ASSERT(root_dir_inode != NULL,
                   "tfs_open: root dir inode must exist");
     
+    
     int inum = tfs_lookup(name, root_dir_inode);
     
+
     if(inum != -1 && inode_get_type(inum) == T_SYMLINK) {
             name = get_target_filename(name);
+            inum = tfs_lookup(name, root_dir_inode);
     }
     
     size_t offset;
@@ -144,21 +147,27 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
 
 int tfs_sym_link(char const *target, char const *link_name) {
 
+    
     int inum = inode_create(T_SYMLINK);
-    int inum_target = tfs_lookup(target, inode_get(ROOT_DIR_INUM));
-    if (inum == -1 || inum_target == -1) {
+    inode_t *root_dir = inode_get(ROOT_DIR_INUM);
+
+    if (inum == -1 ) {
         return -1;
     }
 
     inode_t *inode = inode_get(inum);
-    inode_t *inode_target = inode_get(inum_target);
+    
     if (inode == NULL) {
         return -1;
     }
     
+
+    add_dir_entry(root_dir, link_name + 1 , inum);
+    
+
     int fhandle = tfs_open(link_name, TFS_O_APPEND);
     tfs_write(fhandle, target, strlen(target));
-    add_dir_entry(inode_target, link_name + 1, inum);
+    
     tfs_close(fhandle); 
     
     return 0;
