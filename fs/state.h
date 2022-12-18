@@ -60,7 +60,7 @@ int inode_get_link_count (int inumber);
 // directory operations
 int clear_dir_entry(inode_t *inode, char const *sub_name);
 int add_dir_entry(inode_t *inode, char const *sub_name, int sub_inumber);
-int find_in_dir(inode_t const *inode, char const *sub_name);
+int find_in_dir(inode_t *inode, char const *sub_name);
 
 // data block operations
 int data_block_alloc(void);
