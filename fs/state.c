@@ -192,7 +192,7 @@ static int inode_alloc(void) {
  * Returns inumber of the new inode, or -1 in the case of error.
  *
  * Possible errors:
- *   - No free slots in inode table.
+ *   - No slots in inode table.
  *   - (if creating a directory) No free data blocks.
  */
 int inode_create(inode_type i_type) {
@@ -240,6 +240,9 @@ int inode_create(inode_type i_type) {
         inode_table[inumber].i_size = 0;
         inode_table[inumber].i_data_block = -1;
         inode_table[inumber].i_links = 1;
+        pthread_cond_init(&inode_table[inumber].i_canread, NULL); 
+        pthread_cond_init(&inode_table[inumber].i_canwrite, NULL); 
+        pthread_mutex_init(&inode_table[inumber].i_mutex, NULL); // initialize mutex
         break;
    
     default:

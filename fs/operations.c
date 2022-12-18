@@ -7,6 +7,7 @@
 #include <string.h>
 #include <string.h>
 #include <errno.h> //remove this later
+#include  <pthread.h>
 #include "betterassert.h"
 
 tfs_params tfs_default_params() {
@@ -74,6 +75,8 @@ static int tfs_lookup(char const *name, inode_t const *root_inode) {
 }
 
 int tfs_open(char const *name, tfs_file_mode_t mode) {
+    
+    
     // Checks if the path name is valid
     if (!valid_pathname(name)) {
         return -1;
@@ -226,6 +229,12 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
     inode_t *inode = inode_get(file->of_inumber);
     ALWAYS_ASSERT(inode != NULL, "tfs_write: inode of open file deleted");
 
+    pthread_mutex_lock(&inode->i_mutex); // lock the inode
+    
+    while (!inode->i_canwrite) {
+        pthread_cond_wait(&inode->i_canwrite, &inode->i_mutex);
+    }
+    
     // Determine how many bytes to write
     size_t block_size = state_block_size();
     if (to_write + file->of_offset > block_size) {
@@ -256,6 +265,10 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
         }
     }
 
+    pthread_mutex_unlock(&inode->i_mutex); //unlock the mutex
+    pthread_cond_signal(&inode->i_canread); //signal the condition variable
+    pthread_cond_signal(&inode->i_canwrite); //signal the condition variable
+
     return (ssize_t)to_write;
 }
 
@@ -264,17 +277,23 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
     if (file == NULL) {
         return -1;
     }
-
+     
     // From the open file table entry, we get the inode
-    inode_t const *inode = inode_get(file->of_inumber);
+    inode_t *inode = inode_get(file->of_inumber);
     ALWAYS_ASSERT(inode != NULL, "tfs_read: inode of open file deleted");
 
+    pthread_mutex_lock(&inode->i_mutex);
+    
+    while (!inode->i_canread) {
+        pthread_cond_wait(&inode->i_canread, &inode->i_mutex);
+    }
+    
     // Determine how many bytes to read
     size_t to_read = inode->i_size - file->of_offset;
     if (to_read > len) {
         to_read = len;
     }
-
+    
     if (to_read > 0) {
         void *block = data_block_get(inode->i_data_block);
         ALWAYS_ASSERT(block != NULL, "tfs_read: data block deleted mid-read");
@@ -285,6 +304,8 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
         file->of_offset += to_read;
     }
 
+    pthread_mutex_unlock(&inode->i_mutex);
+    pthread_cond_signal(&inode->i_canwrite); 
     return (ssize_t)to_read;
 }
 

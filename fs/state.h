@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "operations.h"
+#include <pthread.h>
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -28,8 +29,9 @@ typedef struct {
     size_t i_size; // size of file in bytes
     int i_data_block; // data block number
     int i_links; // number of hard links to this inode
-
-    // in a more complete FS, more fields could exist here
+    pthread_mutex_t i_mutex; // mutex for this inode
+    pthread_cond_t i_canread; // condition variable for this inode
+    pthread_cond_t i_canwrite; // condition variable for this inode
 } inode_t;
 
 typedef enum { FREE = 0, TAKEN = 1 } allocation_state_t;
