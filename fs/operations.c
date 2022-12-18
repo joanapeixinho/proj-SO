@@ -95,7 +95,7 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
         inode_t *inode = inode_get(inum);
         ALWAYS_ASSERT(inode != NULL,
                       "tfs_open: directory files must have an inode");
-        if(inode_get_type(inum) == T_SYMLINK) {
+        if(inode_get_type(inum) == T_SYMLINK && inode->i_data_block != -1) {
             name = get_target_file(inode);
             inum = tfs_lookup(name, root_dir_inode);
             inode = inode_get(inum);
