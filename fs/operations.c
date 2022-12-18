@@ -87,10 +87,6 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
     int inum = tfs_lookup(name, root_dir_inode);
     
 
-    if(inum != -1 && inode_get_type(inum) == T_SYMLINK) {
-            name = get_target_filename(name);
-            inum = tfs_lookup(name, root_dir_inode);
-    }
     
     size_t offset;
 
@@ -99,7 +95,12 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
         inode_t *inode = inode_get(inum);
         ALWAYS_ASSERT(inode != NULL,
                       "tfs_open: directory files must have an inode");
-
+        if(inode_get_type(inum) == T_SYMLINK) {
+            name = get_target_file(inode);
+            inum = tfs_lookup(name, root_dir_inode);
+            inode = inode_get(inum);
+        }
+    
         // Truncate (if requested)
         if (mode & TFS_O_TRUNC) {
             if (inode->i_size > 0) {

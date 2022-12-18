@@ -71,6 +71,6 @@ void remove_from_open_file_table(int fhandle);
 open_file_entry_t *get_open_file_entry(int fhandle);
 
 // helper functions
-char const *get_target_filename(char const *path);
+const char *get_target_file(inode_t const *inode);
 
 #endif // STATE_H

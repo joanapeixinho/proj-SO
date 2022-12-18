@@ -551,20 +551,19 @@ open_file_entry_t *get_open_file_entry(int fhandle) {
 }
 
 /**
- * Obtain the file name from a path.
+ * Obtain the file from symbolic link by reading its contents.
  *
  * Input:
- *   - path: path to a file
+ *   - inode: symbolic link inode
  *
- * Returns a pointer to a newly allocated string containing the file name.
+ * Returns a pointer to a newly allocated string containing the file path
  */
 
-const char *get_target_filename(char const *path)
+const char *get_target_file(inode_t const *inode)
 {
-        const char *s = strrchr(path, '/');
-        if(s==NULL) {
-                return strdup(path);
-        } else {
-                return strdup(s + 1);
-        }
+    char *target_file = (char *)data_block_get(inode->i_data_block);
+    ALWAYS_ASSERT(target_file != NULL, "get_target_file: symbolic link inode must have a data block");
+
+    return target_file;
 }
+
