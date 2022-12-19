@@ -316,8 +316,9 @@ void inode_delete(int inumber) {
 
     ALWAYS_ASSERT(freeinode_ts[inumber] == TAKEN,
                   "inode_delete: inode already freed");
-
     pthread_rwlock_wrlock(&i_table_rwl);
+
+    pthread_rwlock_wrlock(&inode_locks[inumber]);
 
     if (inode_table[inumber].i_size > 0) {
         data_block_free(inode_table[inumber].i_data_block);
