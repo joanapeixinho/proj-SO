@@ -580,6 +580,24 @@ int add_to_open_file_table(int inumber, size_t offset) {
 }
 
 /**
+ * Find an entry in the open file table.
+ *
+ * Input:
+ *   - inumber: inode number of the file to find
+ *
+ * Returns file handle if successful, -1 otherwise.
+ */
+int is_in_open_file_table(int inumber) {
+    for (int i = 0; i < MAX_OPEN_FILES; i++) {
+        if (free_open_file_entries[i] == TAKEN &&
+            open_file_table[i].of_inumber == inumber) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/**
  * Free an entry from the open file table.
  *
  * Input:
@@ -636,4 +654,6 @@ const char *get_target_file(inode_t const *inode)
 
     return target_file;
 }
+
+
 
