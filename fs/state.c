@@ -169,11 +169,11 @@ int state_destroy(void) {
 
     pthread_rwlock_unlock(&i_table_rwl);
     pthread_rwlock_unlock(&fs_data_rwl);
-    pthread_rwlock_unlock(&of_table_rwl);
+    pthread_mutex_unlock(&open_file_table_mutex);
 
     pthread_rwlock_destroy(&i_table_rwl);   // destroy rwlock
     pthread_rwlock_destroy(&fs_data_rwl);   // destroy rwlock
-    pthread_rwlock_destroy(&of_table_rwl);  // destroy rwlock
+    pthread_mutex_destroy(&open_file_table_mutex);  // destroy rwlock
 
     for (size_t i = 0; i < INODE_TABLE_SIZE; i++) {
         pthread_rwlock_unlock(&inode_locks[i]);
@@ -350,7 +350,7 @@ inode_type inode_get_type(int inumber) {
     return inode_table[inumber].i_node_type;
 }
 
-int inode_get_inumber (inode_t *inode) {
+int inode_get_inumber (inode_t const *inode) {
     ALWAYS_ASSERT(inode != NULL, "get_inumber: NULL inode");
 
     insert_delay(); // simulate storage access delay to inode
@@ -520,11 +520,11 @@ int find_in_dir(inode_t const *inode, char const *sub_name) {
     }
 
     int inumber = inode_get_inumber(inode);
-    pthread_rwlock_rdlock(&inode[inumber]);
+    pthread_rwlock_rdlock(&inode_locks[inumber]);
     // Locates the block containing the entries of the directory
     dir_entry_t *dir_entry = (dir_entry_t *)data_block_get(inode->i_data_block);
     if (dir_entry == NULL) {
-        pthread_rwlock_unlock(&inode[inumber]);
+        pthread_rwlock_unlock(&inode_locks[inumber]);
     }
 
     ALWAYS_ASSERT(dir_entry != NULL,
@@ -537,10 +537,10 @@ int find_in_dir(inode_t const *inode, char const *sub_name) {
             (strncmp(dir_entry[i].d_name, sub_name, MAX_FILE_NAME) == 0)) {
 
             int sub_inumber = dir_entry[i].d_inumber;
-            pthread_rwlock_unlock(&inode[inumber]);
+            pthread_rwlock_unlock(&inode_locks[inumber]);
             return sub_inumber;
         }
-    pthread_rwlock_unlock(&inode[inumber]);
+    pthread_rwlock_unlock(&inode_locks[inumber]);
     return -1; // entry not found
 }
 
@@ -576,6 +576,7 @@ int data_block_alloc(void) {
         }
         pthread_rwlock_unlock(&fs_data_rwl);
     }
+}
     return -1;
 }
 
