@@ -318,9 +318,9 @@ int tfs_unlink(char const *target) {
         return -1;
     }
 
-    // if file is opened its name should not be deleted
+    //if file is opened its name should not be deleted
     if (is_in_open_file_table(inum) != -1 && inode_get_link_count(inum) == 1){
-        return -1;
+      return -1;
     }
 
     //remove the entry from the directory

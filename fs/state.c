@@ -658,12 +658,15 @@ int add_to_open_file_table(int inumber, size_t offset) {
  * Returns file handle if successful, -1 otherwise.
  */
 int is_in_open_file_table(int inumber) {
+    pthread_mutex_lock(&open_file_table_mutex);
     for (int i = 0; i < MAX_OPEN_FILES; i++) {
         if (free_open_file_entries[i] == TAKEN &&
             open_file_table[i].of_inumber == inumber) {
+            pthread_mutex_unlock(&open_file_table_mutex);
             return i;
         }
     }
+    pthread_mutex_unlock(&open_file_table_mutex);
     return -1;
 }
 

@@ -12,7 +12,7 @@ void *thread_func_write() {
     int f;
     ssize_t r;
 
-    f = tfs_open(path, 0);
+    f = tfs_open(path, TFS_O_CREAT);
     assert(f != -1);
     
     //write to the file
@@ -62,22 +62,22 @@ int main() {
     assert(tfs_init(NULL) != -1);
 
     //create a thread that writes to the file
-    assert(pthread_create(&twrite_1, NULL, thread_func_write, NULL) != 0);
+    assert(pthread_create(&twrite_1, NULL, thread_func_write, NULL) == 0);
 
     //create a thread that writes to the file
-    assert(pthread_create(&twrite_2, NULL, thread_func_write, NULL) != 0);
+    assert(pthread_create(&twrite_2, NULL, thread_func_write, NULL) == 0);
 
     //create a thread that reads from the file
-    assert(pthread_create(&tread_1, NULL, thread_func_read, NULL) != 0);
+    assert(pthread_create(&tread_1, NULL, thread_func_read, NULL) == 0);
 
     //create a thread that reads from the file
-    assert(pthread_create(&tread_2, NULL, thread_func_read, NULL) != 0);
+    assert(pthread_create(&tread_2, NULL, thread_func_read, NULL) == 0);
 
     //wait for the threads to finish
-    assert(pthread_join(twrite_1, NULL) != 0);
-    assert(pthread_join(twrite_2, NULL) != 0);
-    assert(pthread_join(tread_1, NULL) != 0);
-    assert(pthread_join(tread_2, NULL) != 0);
+    assert(pthread_join(twrite_1, NULL) == 0);
+    assert(pthread_join(twrite_2, NULL) == 0);
+    assert(pthread_join(tread_1, NULL) == 0);
+    assert(pthread_join(tread_2, NULL) == 0);
 
     //destroy the file system
     assert(tfs_destroy() != -1);
