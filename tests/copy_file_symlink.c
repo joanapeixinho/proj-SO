@@ -58,7 +58,7 @@ int main() {
 
     assert(f2 == 0);
     
-    // check that the original file is empty
+    // check that the original file is empty after copying 
     assert_empty_file(target_path1);
 
     assert(tfs_destroy() != -1);
