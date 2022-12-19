@@ -29,7 +29,6 @@ typedef struct {
     size_t i_size; // size of file in bytes
     int i_data_block; // data block number
     int i_links; // number of hard links to this inode
-    pthread_rwlock_t i_rwl; // read & write lock
 } inode_t;
 
 typedef enum { FREE = 0, TAKEN = 1 } allocation_state_t;
