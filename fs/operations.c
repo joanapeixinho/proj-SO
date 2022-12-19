@@ -282,10 +282,10 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
 
 ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
     open_file_entry_t *file = get_open_file_entry(fhandle);
-    pthread_mutex_lock(&file->lock);
     if (file == NULL) {
         return -1;
     }
+    pthread_mutex_lock(&file->lock);
      
     // From the open file table entry, we get the inode
     inode_t *inode = inode_get(file->of_inumber);
