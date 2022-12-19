@@ -4,6 +4,9 @@
 #include <pthread.h>
 #include <string.h>
 
+
+/* this test reads a file in one thread and deletes it in another*/
+
 char const source_path[] = "tests/file_to_delete.txt";
 char const dest_path[] = "/f1";
 

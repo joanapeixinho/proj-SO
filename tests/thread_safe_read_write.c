@@ -5,6 +5,10 @@
 #include <string.h>
 
 
+/* test if program is thread safe by
+ creating multiple threads that read and write on same file*/
+
+
 void *thread_func_write() {
     char *str = "AAAAAAAA!";
     char *path = "/f1";
@@ -56,7 +60,7 @@ int main() {
     pthread_t twrite_1;
     pthread_t twrite_2;
 
-    //test if program is thread safe by creating multiple threads that read and write to the file system
+    
 
     //initialize the file system
     assert(tfs_init(NULL) != -1);
