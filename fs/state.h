@@ -40,7 +40,7 @@ typedef enum { FREE = 0, TAKEN = 1 } allocation_state_t;
 typedef struct {
     int of_inumber;
     size_t of_offset;
-    pthread_rwlock_t ofe_rwl; // read & write lock
+    pthread_mutex_t lock; // read & write lock
 } open_file_entry_t;
 
 int state_init(tfs_params);
@@ -61,7 +61,7 @@ int inode_get_link_count (int inumber);
 // directory operations
 int clear_dir_entry(inode_t *inode, char const *sub_name);
 int add_dir_entry(inode_t *inode, char const *sub_name, int sub_inumber);
-int find_in_dir(inode_t *inode, char const *sub_name);
+int find_in_dir(inode_t const *inode, char const *sub_name);
 
 // data block operations
 int data_block_alloc(void);
