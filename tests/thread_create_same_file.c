@@ -4,40 +4,18 @@
 #include <pthread.h>
 #include <string.h>
 
-
-void write_fn();
-void *read_fn(void *ignore);
-
 #define THREAD_NUM 10
 #define BUFFER_LEN 128
 #define INPUT_FILE "tests/large_file.txt"
 #define TFS_FILE "/f1"	
 
-/* This test fills a file with large content, and then attempts to read from it
- * simultaneously in multiple threads, comparing the content with the original
- * source. */
+/* This test fills a file with large random content, and then attempts to read 
+from it simultaneously in multiple threads, comparing the content 
+with the original source. */
 
-int main() {
-    assert(tfs_init(NULL) != -1);
-
-    pthread_t tid[THREAD_NUM];
-
-    write_fn();
-    for (int i = 0; i < THREAD_NUM; i++) {
-        assert(pthread_create(&tid[i], NULL, read_fn, NULL) == 0);
-    }
-
-    for (int i = 0; i < THREAD_NUM; i++) {
-        assert(pthread_join(tid[i], NULL) == 0);
-    }
-
-    assert(tfs_destroy() == 0);
-    printf("Successful test.\n");
-
-    return 0;
-}
 
 void write_fn() {
+
     FILE *fd = fopen(INPUT_FILE, "r");
     assert(fd != NULL);
 
@@ -50,7 +28,7 @@ void write_fn() {
     size_t bytes_read = fread(buffer, sizeof(char), BUFFER_LEN, fd);
 
     while (bytes_read > 0) {
-        /* write the contents of the file */
+        // write the contents of the file to the tfs file
         r = tfs_write(f, buffer, bytes_read);
         assert(r == bytes_read);
         bytes_read = fread(buffer, sizeof(char), BUFFER_LEN, fd);
@@ -90,4 +68,24 @@ void *read_fn(void *input) {
     assert(fclose(fd) == 0);
 
     return NULL;
+}
+
+int main() {
+    assert(tfs_init(NULL) != -1);
+
+    pthread_t tid[THREAD_NUM];
+
+    write_fn();
+    for (int i = 0; i < THREAD_NUM; i++) {
+        assert(pthread_create(&tid[i], NULL, read_fn, NULL) == 0);
+    }
+
+    for (int i = 0; i < THREAD_NUM; i++) {
+        assert(pthread_join(tid[i], NULL) == 0);
+    }
+
+    assert(tfs_destroy() == 0);
+    printf("Successful test.\n");
+
+    return 0;
 }

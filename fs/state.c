@@ -40,7 +40,6 @@ static allocation_state_t *free_open_file_entries;
 static pthread_mutex_t open_file_table_mutex;
 
 
-
 static inline bool valid_inumber(int inumber) {
     return inumber >= 0 && inumber < INODE_TABLE_SIZE;
 }
@@ -165,12 +164,12 @@ int state_destroy(void) {
     free_open_file_entries = NULL;
 
 
-    pthread_rwlock_destroy(&i_table_rwl);   // destroy rwlock
-    pthread_rwlock_destroy(&fs_data_rwl);   // destroy rwlock
-    pthread_mutex_destroy(&open_file_table_mutex);  // destroy rwlock
+    pthread_rwlock_destroy(&i_table_rwl);          
+    pthread_rwlock_destroy(&fs_data_rwl);           
+    pthread_mutex_destroy(&open_file_table_mutex); 
 
     for (size_t i = 0; i < INODE_TABLE_SIZE; i++) {
-        pthread_rwlock_destroy(&inode_locks[i]);
+        pthread_rwlock_destroy(&inode_locks[i]); 
     }
 
     free(inode_locks);
@@ -303,7 +302,7 @@ int inode_create(inode_type i_type) {
  * Delete an inode.
  *
  * Input:
- *   - inumber: inode's number
+ *      - inumber: inode's number
  */
 void inode_delete(int inumber) {
     

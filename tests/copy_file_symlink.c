@@ -6,6 +6,9 @@
 #include <string.h>
 
 
+/* This test writes to a target file using a hard link for it and 
+copies an empty file to that target using a soft link */
+
 char const target_path1[] = "/f1";
 char const link_path1[] = "/l1";
 char const link_path2[] = "/l2";

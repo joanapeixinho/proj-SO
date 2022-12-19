@@ -33,6 +33,7 @@ int tfs_init(tfs_params const *params_ptr) {
     if (state_init(params) != 0) {
         return -1;
     }
+    // initialize the open file table mutex
     pthread_mutex_init(&tfs_open_mutex, NULL);
 
     // create root inode
@@ -67,7 +68,13 @@ static bool valid_pathname(char const *name) {
  * Returns the inumber of the file, -1 if unsuccessful.
  */
 static int tfs_lookup(char const *name, inode_t const *root_inode) {
-    // TODO: assert that root_inode is the root directory
+    
+    // Checks if the inode is the root directory inode
+    if (get_inode_number(root_inode) != ROOT_DIR_INUM) {
+        return -1;
+    }
+
+    // Checks if the path name is valid
     if (!valid_pathname(name)) {
         return -1;
     }
@@ -86,6 +93,7 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
         return -1;
     }
     
+    // Checks if the mode is valid
     pthread_mutex_lock(&tfs_open_mutex);
 
     inode_t *root_dir_inode = inode_get(ROOT_DIR_INUM);
@@ -93,6 +101,7 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
                   "tfs_open: root dir inode must exist");
     
     
+
     int inum = tfs_lookup(name, root_dir_inode);
     
     size_t offset;
@@ -161,8 +170,8 @@ int tfs_open(char const *name, tfs_file_mode_t mode) {
     // opened but it remains created
 }
 
-int tfs_sym_link(char const *target, char const *link_name) {
 
+int tfs_sym_link(char const *target, char const *link_name) {
     
     int inum = inode_create(T_SYMLINK);
     inode_t *root_dir = inode_get(ROOT_DIR_INUM);
@@ -182,7 +191,7 @@ int tfs_sym_link(char const *target, char const *link_name) {
         return -1;
     }
     
-
+    // Add entry in the root directory
     if(add_dir_entry(root_dir, link_name + 1 , inum) == -1){
         return -1;
     }
@@ -197,7 +206,6 @@ int tfs_sym_link(char const *target, char const *link_name) {
 }
 
 
-//create a hard link
 
 int tfs_link(char const *target, char const *link_name) {
     
@@ -218,10 +226,13 @@ int tfs_link(char const *target, char const *link_name) {
     if (inum == -1 || inode_get_type(inum) == T_SYMLINK) {
         return -1;
     }
+
     if (add_dir_entry(root_dir_inode, link_name + 1, inum) == -1) {
         return -1;
     }
+    // increment the link count
     inc_link_count(inum);
+
     return 0;
 }
 
@@ -285,6 +296,8 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
     if (file == NULL) {
         return -1;
     }
+
+    // Lock the file
     pthread_mutex_lock(&file->lock);
      
     // From the open file table entry, we get the inode
@@ -347,11 +360,6 @@ int tfs_unlink(char const *target) {
 
     return 0;
 }
-
-
-    //copy contents from source_path existing on fyle system to dest_path in tfs
-    //if file exists, overwrite it with new contents from source_path
-    //return 0 on success, -1 on failure
 int tfs_copy_from_external_fs(char const *source_path, char const *dest_path) {
    
     //open source file
