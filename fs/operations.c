@@ -214,7 +214,7 @@ int tfs_link(char const *target, char const *link_name) {
 
     //get the inumber of the target file
     int inum = tfs_lookup(target, root_dir_inode);
-    //printf( "type in creating hard link = %d\n", inode_get_type(inum));
+    
     if (inum == -1 || inode_get_type(inum) == T_SYMLINK) {
         return -1;
     }
@@ -340,12 +340,12 @@ int tfs_unlink(char const *target) {
     //decrement the link count
     dec_link_count(inum);
 
+    //delete the inode when it's nº of HardLinks hits 0
     if (inode_get_link_count(inum) == 0) {
             inode_delete(inum);
     }
 
     return 0;
-
 }
 
 
@@ -371,6 +371,7 @@ int tfs_copy_from_external_fs(char const *source_path, char const *dest_path) {
     char buffer[128];
     memset(buffer,0,sizeof(buffer));
     size_t bytes_read;
+    //read while there are characters to read in the file
     while ((bytes_read = fread(buffer, sizeof(char), 128, source_fd)) > 0) {
         if (tfs_write(dest_fd, buffer, bytes_read* sizeof(char)) == -1) {
             return -1;
