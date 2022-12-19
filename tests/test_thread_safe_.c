@@ -14,9 +14,7 @@ void *thread_read_file() {
     int f;
     ssize_t r;
 
-    int f2 = tfs_copy_from_external_fs(source_path,dest_path);
-
-    assert(f2 == 0);
+   
 
     f = tfs_open(dest_path, 0);
     assert(f != -1);
@@ -50,6 +48,10 @@ int main() {
 
     //initialize the file system
     assert(tfs_init(NULL) != -1);
+
+    int f2 = tfs_copy_from_external_fs(source_path,dest_path);
+
+    assert(f2 == 0);
 
     //create a thread that reads from the file
     assert(pthread_create(&tread, NULL, thread_read_file, NULL) == 0);
