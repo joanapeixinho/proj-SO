@@ -47,7 +47,7 @@ int main() {
     // create hard link
     assert(tfs_link(target_path1, link_path2) != -1);
 
-    //write contents with hard link
+    //write contents in target using hard link
     write_contents(link_path2);
 
     //create symlink
