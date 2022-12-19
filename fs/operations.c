@@ -167,6 +167,11 @@ int tfs_sym_link(char const *target, char const *link_name) {
     int inum = inode_create(T_SYMLINK);
     inode_t *root_dir = inode_get(ROOT_DIR_INUM);
 
+    // check if there is a link_name in the directory already
+    if( find_in_dir(root_dir, link_name + 1) != -1){
+        return -1;
+    }
+
     if (inum == -1 ) {
         return -1;
     }
@@ -198,9 +203,14 @@ int tfs_link(char const *target, char const *link_name) {
     
     if (!valid_pathname(target) || !valid_pathname(link_name) ) {
         return -1;
-    } 
+    }
 
     inode_t *root_dir_inode = inode_get(ROOT_DIR_INUM);
+
+    // check if there is a link_name in the directory already
+    if( find_in_dir(root_dir_inode, link_name + 1) != -1){
+        return -1;
+    }
 
     //get the inumber of the target file
     int inum = tfs_lookup(target, root_dir_inode);
