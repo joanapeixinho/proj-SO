@@ -574,18 +574,18 @@ int data_block_alloc(void) {
         if (free_blocks[i] == FREE) {
             pthread_rwlock_unlock(&fs_data_rwl);
             pthread_rwlock_wrlock(&fs_data_rwl);
-        //recheck 
-        if (free_blocks[i] == FREE) {
-            free_blocks[i] = TAKEN;
-            pthread_rwlock_unlock(&fs_data_rwl);
-            return (int)i;
-        } else {
-            pthread_rwlock_unlock(&fs_data_rwl);
-            pthread_rwlock_rdlock(&fs_data_rwl);
+            //recheck 
+            if (free_blocks[i] == FREE) {
+                free_blocks[i] = TAKEN;
+                pthread_rwlock_unlock(&fs_data_rwl);
+                return (int)i;
+            } else {
+                pthread_rwlock_unlock(&fs_data_rwl);
+                pthread_rwlock_rdlock(&fs_data_rwl);
         }
-        pthread_rwlock_unlock(&fs_data_rwl);
     }
 }
+    pthread_rwlock_unlock(&fs_data_rwl);
     return -1;
 }
 
