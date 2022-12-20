@@ -341,8 +341,10 @@ int tfs_unlink(char const *target) {
         return -1;
     }
 
-    //if file is opened its name should not be deleted
-    if (is_in_open_file_table(inum) != -1 && inode_get_link_count(inum) == 1){
+   
+    //if its the last hardlink to the file it should not be unlinked
+    if (is_in_open_file_table(inum) != -1 && inode_get_link_count(inum) == 1
+        && inode_get_type(inum) != T_SYMLINK){
       return -1;
     }
 
