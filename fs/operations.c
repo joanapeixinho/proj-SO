@@ -70,7 +70,7 @@ static bool valid_pathname(char const *name) {
 static int tfs_lookup(char const *name, inode_t const *root_inode) {
     
     // Checks if the inode is the root directory inode
-    if (get_inode_number(root_inode) != ROOT_DIR_INUM) {
+    if (inode_get_inumber(root_inode) != ROOT_DIR_INUM) {
         return -1;
     }
 
