@@ -51,6 +51,7 @@ size_t state_block_size(void);
 int inode_create(inode_type n_type);
 void inode_delete(int inumber);
 inode_t *inode_get(int inumber);
+int inode_get_inumber (inode_t const *inode)
 inode_type inode_get_type(int inumber);
 void inc_link_count (int inumber);
 void dec_link_count (int inumber);
