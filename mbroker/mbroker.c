@@ -12,6 +12,7 @@ int main(int argc, char **argv) {
     char* pipename = argv[1];
     int max_sessions = atoi(argv[2]);
 
+    //TODO: implement
     printf("mbroker %s %d\n", pipename, max_sessions);
 
     return -1;
