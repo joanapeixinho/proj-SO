@@ -3,22 +3,26 @@
 
 #include <sys/types.h>
 
-/* operation codes */
-enum {
-    TFS_OP_CODE_REGIST_PUB = 1,
-    TFS_OP_CODE_REGIST_SUB = 2,
-    TFS_OP_CODE_CREATE_BOX = 3,
-    TFS_OP_CODE_CREATE_BOX_ANSWER = 4,
-    TFS_OP_CODE_REMOVE_BOX = 5,
-    TFS_OP_CODE_REMOVE_BOX_ANSWER = 6,
-    TFS_OP_CODE_LIST = 7
-    TFS_OP_CODE_LIST_ANSWER = 8
-}; 
-
+#define PIPE_BUFFER_MAX_LEN (PIPE_BUF)
 #define PIPE_STRING_LENGTH (256)
 #define BOX_NAME_LENGTH (32)
+#define ERROR_MESSAGE_LENGTH (1024)
+#define MESSAGE_LENGTH (1024)
 
-#define PIPE_BUFFER_MAX_LEN (PIPE_BUF)
+
+/* operation codes */
+enum {
+    OP_CODE_REGIST_PUB = 1,
+    OP_CODE_REGIST_SUB = 2,
+    OP_CODE_CREATE_BOX = 3,
+    OP_CODE_CREATE_BOX_ANSWER = 4,
+    OP_CODE_REMOVE_BOX = 5,
+    OP_CODE_REMOVE_BOX_ANSWER = 6,
+    OP_CODE_LIST_BOXES = 7,
+    OP_CODE_LIST_BOXES_ANSWER = 8,
+    OP_CODE_PUBLISHER = 9,
+    OP_CODE_SUBSCRIBER = 10,
+}; 
 
 /*
  * Same as POSIX's read, but handles EINTR correctly.
