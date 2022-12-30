@@ -22,7 +22,20 @@ typedef struct {
     char *buffer;
 } box_t;
 
+/*enum client type */
+typedef enum  {
+    PUBLISHER,
+    SUBSCRIBER, 
+    MANAGER
+} client_type;
 
+typedef struct client {
+    int session_id;
+    box_t *box;
+    int fdclient;
+    client_type type;
+
+} client_t;
 
 
 
