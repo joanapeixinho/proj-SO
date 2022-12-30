@@ -97,20 +97,8 @@ int main(int argc, char **argv) {
                     close_server();
                     return -1;
             }
-                    // add client init
-                    break;
-                case 't':
-                    // add tfs init
-                    break;
-                case 'q':
-                    close_server();
-                    break;
-                default:
-                    printf("Invalid operation code %c\n", op_code);
-                    close_server();
-                    return -1;
-            }
         }
+        
     }
 
     
