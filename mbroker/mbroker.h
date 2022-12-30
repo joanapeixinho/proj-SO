@@ -16,7 +16,7 @@
 typedef struct {
     char opcode;
     char client_pipe[PIPE_STRING_LENGTH + 1];
-    char box_name[PIPE_STRING_LENGTH + 1];
+    char box_name[BOX_NAME_LENGTH + 1];
     int fhandle;
     size_t len;
     char *buffer;
@@ -32,7 +32,7 @@ typedef enum  {
 typedef struct client {
     int session_id;
     box_t *box;
-    int fdclient;
+    int client_pipe;
     client_type type;
 
 } client_t;

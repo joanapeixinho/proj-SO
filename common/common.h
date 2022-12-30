@@ -24,6 +24,16 @@ enum {
     OP_CODE_SUBSCRIBER = 10,
 }; 
 
+/**
+ * TécnicoFS file opening modes.
+ */
+typedef enum {
+    TFS_O_CREAT = 0b001,
+    TFS_O_TRUNC = 0b010,
+    TFS_O_APPEND = 0b100,
+} tfs_file_mode_t;
+
+
 /*
  * Same as POSIX's read, but handles EINTR correctly.
  */

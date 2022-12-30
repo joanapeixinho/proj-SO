@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include <sys/types.h>
+#include <common/common.h>
 
 /**
  * TécnicoFS parameters.
@@ -32,14 +33,6 @@ int tfs_init(tfs_params const *params);
  */
 int tfs_destroy();
 
-/**
- * TécnicoFS file opening modes.
- */
-typedef enum {
-    TFS_O_CREAT = 0b001,
-    TFS_O_TRUNC = 0b010,
-    TFS_O_APPEND = 0b100,
-} tfs_file_mode_t;
 
 /**
  * Open a file.
