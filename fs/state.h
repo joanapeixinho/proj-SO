@@ -3,7 +3,6 @@
 
 #include "config.h"
 #include "operations.h"
-#include <pthread.h>
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -18,17 +17,18 @@ typedef struct {
     int d_inumber;
 } dir_entry_t;
 
-typedef enum { T_FILE, T_DIRECTORY,T_SYMLINK } inode_type;
+typedef enum { T_FILE, T_DIRECTORY } inode_type;
 
 /**
  * Inode
  */
 typedef struct {
-    
-    inode_type i_node_type; // type of inode
-    size_t i_size; // size of file in bytes
-    int i_data_block; // data block number
-    int i_links; // number of hard links to this inode
+    inode_type i_node_type;
+
+    size_t i_size;
+    int i_data_block;
+
+    // in a more complete FS, more fields could exist here
 } inode_t;
 
 typedef enum { FREE = 0, TAKEN = 1 } allocation_state_t;
@@ -39,7 +39,6 @@ typedef enum { FREE = 0, TAKEN = 1 } allocation_state_t;
 typedef struct {
     int of_inumber;
     size_t of_offset;
-    pthread_mutex_t lock; // read & write lock
 } open_file_entry_t;
 
 int state_init(tfs_params);
@@ -47,34 +46,20 @@ int state_destroy(void);
 
 size_t state_block_size(void);
 
-// inode operations
 int inode_create(inode_type n_type);
 void inode_delete(int inumber);
 inode_t *inode_get(int inumber);
-int inode_get_inumber (inode_t const *inode);
-inode_type inode_get_type(int inumber);
-void inc_link_count (int inumber);
-void dec_link_count (int inumber);
-int inode_get_link_count (int inumber);
 
-
-// directory operations
 int clear_dir_entry(inode_t *inode, char const *sub_name);
 int add_dir_entry(inode_t *inode, char const *sub_name, int sub_inumber);
 int find_in_dir(inode_t const *inode, char const *sub_name);
 
-// data block operations
 int data_block_alloc(void);
 void data_block_free(int block_number);
 void *data_block_get(int block_number);
 
-// open file table operations
 int add_to_open_file_table(int inumber, size_t offset);
 void remove_from_open_file_table(int fhandle);
 open_file_entry_t *get_open_file_entry(int fhandle);
-int is_in_open_file_table (int inumber);
-
-// helper functions
-const char *get_target_file(inode_t const *inode);
 
 #endif // STATE_H
