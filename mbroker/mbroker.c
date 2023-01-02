@@ -61,13 +61,13 @@ int main(int argc, char **argv) {
 
         if (pipe_temp < 0) {
             printf("Failed to open pipe %s\n", pipename);
-            close_server();
+            close_server(  EXIT_FAILURE );
             return -1;
         }
 
         if (close(pipe_temp) < 0) {
             printf("Failed to close pipe %s\n", pipename);
-            close_server();
+            close_server( EXIT_FAILURE );
             return -1;
         }
 
@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
                     break;
                 default:
                     printf("Invalid operation code %c\n", op_code);
-                    close_server();
+                    close_server(EXIT_FAILURE);
                     return -1;
             }
             bytes_read = read(server_pipe, &op_code, sizeof(char));
@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
 
         if (bytes_read < 0) {
             printf("Failed to read from pipe %s\n", pipename);
-            close_server();
+            close_server(EXIT_FAILURE);
             return -1;
         }
         
@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
     return -1;
 }
 
-int mbroker_init() {
+int init_mbroker() {
     clients = malloc(max_sessions * sizeof(client_t));
     free_clients = malloc(max_sessions * sizeof(bool));
 
@@ -203,17 +203,25 @@ void *client_session(void *client_in_array) {
 }
 
 
-void close_server() {
-    if (close(server_pipe) < 0) {
-        perror("Failed to close pipe");
-        exit(-1);
+int free_client(int session_id) {
+    mutex_lock(&free_clients_lock);
+    if (free_clients[session_id] == true) {
+        mutex_unlock(&free_clients_lock);
+        return -1;
     }
+    free_clients[session_id] = true;
+    mutex_unlock(&free_clients_lock);
+    return 0;
+}
 
-    if (unlink(pipename) != 0 && errno != ENOENT) {
-        perror("Failed to delete pipe");
-        exit(-1);
+void close_server(int exit_code) {
+    for (int i = 0; i < max_sessions; ++i) {
+        if (free_client(i) == -1) {
+            perror("Failed to free client");
+            exit(EXIT_FAILURE);
+        }
     }
-
-    printf("\nSuccessfully ended the server.\n");
-    exit(-1);
+    free(clients);
+    free(free_clients);
+    exit(exit_code);
 }
