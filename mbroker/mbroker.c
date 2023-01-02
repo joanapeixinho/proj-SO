@@ -93,6 +93,8 @@ int main(int argc, char **argv) {
                     break;
                 case OP_CODE_LIST_BOXES_ANSWER:
                     break;
+                case OP_CODE_PUBLISHER:
+                    break;
                 default:
                     printf("Invalid operation code %c\n", op_code);
                     close_server();
@@ -140,7 +142,7 @@ void *client_session(void *client_in_array) {
     while (true) {
         mutex_lock(&client->lock);
 
-        while (!client->to_execute) {
+        while (!client->bool_cond) {
             if (pthread_cond_wait(&client->cond, &client->lock) != 0) {
                 perror("Failed to wait for condition variable");
                 close_server(EXIT_FAILURE);
@@ -178,9 +180,6 @@ void *client_session(void *client_in_array) {
         case OP_CODE_PUBLISHER:
             result = handle_tfs_write_box(client);
             break;
-        case OP_CODE_SUBSCRIBER:
-            result = handle_tfs_read_box(client);
-            break;
         default:
             break;
         }
@@ -194,7 +193,7 @@ void *client_session(void *client_in_array) {
             }
         }
 
-        client->to_execute = false;
+        client->bool_cond = false;
         mutex_unlock(&client->lock);
     }
 }
