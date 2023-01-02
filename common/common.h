@@ -4,8 +4,8 @@
 #include <sys/types.h>
 
 #define PIPE_BUFFER_MAX_LEN (PIPE_BUF)
-#define PIPE_STRING_LENGTH (256)
-#define BOX_NAME_LENGTH (32)
+#define PIPE_STRING_LENGTH (255)
+#define BOX_NAME_LENGTH (31)
 #define ERROR_MESSAGE_LENGTH (1024)
 #define MESSAGE_LENGTH (1024)
 
@@ -24,9 +24,7 @@ enum {
     OP_CODE_SUBSCRIBER = 10,
 }; 
 
-/**
- * TécnicoFS file opening modes.
- */
+/*  TécnicoFS file opening modes */
 typedef enum {
     TFS_O_CREAT = 0b001,
     TFS_O_TRUNC = 0b010,
@@ -37,6 +35,7 @@ typedef enum {
 /*
  * Same as POSIX's read, but handles EINTR correctly.
  */
+
 ssize_t try_read(int fd, void *buf, size_t count);
 
 /*

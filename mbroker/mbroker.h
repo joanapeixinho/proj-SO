@@ -15,7 +15,7 @@
 
 typedef struct {
     char opcode;
-    char client_pipe[PIPE_STRING_LENGTH + 1];
+    char client_pipename[PIPE_STRING_LENGTH + 1];
     char box_name[BOX_NAME_LENGTH + 1];
     int fhandle;
     size_t len;
@@ -34,7 +34,10 @@ typedef struct client {
     box_t box;
     int client_pipe;
     client_type type;
-
+    bool bool_cond;
+    pthread_t thread_id;
+    pthread_cond_t cond;
+    pthread_mutex_t lock;
 } client_t;
 
 
