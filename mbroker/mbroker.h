@@ -46,6 +46,7 @@ int mbroker_init();
 void *client_session(void *client_in_array);
 void close_server(int exit_code);
 int free_client(int session_id);
+int get_free_client();
 int handle_tfs_register(client_t *client);
 int handle_tfs_create_box(client_t *client);
 int handle_tfs_create_box_answer(client_t *client);
@@ -54,5 +55,6 @@ int handle_tfs_remove_box_answer(client_t *client);
 int handle_tfs_list_boxes(client_t *client);
 int handle_tfs_list_boxes_answer(client_t *client);
 int handle_tfs_write(client_t *client);
+
 
 #endif

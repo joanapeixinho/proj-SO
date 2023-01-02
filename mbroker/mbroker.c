@@ -80,10 +80,11 @@ int main(int argc, char **argv) {
 
             switch (op_code) {
                 case OP_CODE_REGIST_PUB:
-                    // add pub register
+                    // parser for regist pub 
+                    box_regist_parser(server_pipe, op_code);
                     break;
                 case OP_CODE_REGIST_SUB:
-                    // add tfs init
+                    
                     break;
                 case OP_CODE_CREATE_BOX:
                     break;
@@ -212,6 +213,19 @@ int free_client(int session_id) {
     free_clients[session_id] = true;
     mutex_unlock(&free_clients_lock);
     return 0;
+}
+
+int get_free_client() {
+    mutex_lock(&free_clients_lock);
+    for (int i = 0; i < max_sessions; ++i) {
+        if (free_clients[i] == true) {
+            free_clients[i] = false;
+            mutex_unlock(&free_clients_lock);
+            return i;
+        }
+    }
+    mutex_unlock(&free_clients_lock);
+    return -1;
 }
 
 void close_server(int exit_code) {
