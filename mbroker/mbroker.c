@@ -22,7 +22,11 @@ int main(int argc, char **argv) {
 
     max_sessions = atoi(argv[2]);
 
-    // add server init with max_sessions
+    //Initialize mbroker
+    if (mbroker_init() != 0) {
+        printf("Failed to init mbroker\n");
+        return -1;
+    }
 
     if (tfs_init() != 0) {
         printf("Failed to init tfs\n");
@@ -116,22 +120,22 @@ int main(int argc, char **argv) {
     return -1;
 }
 
-int init_mbroker() {
+int mbroker_init() {
     clients = malloc(max_sessions * sizeof(client_t));
     free_clients = malloc(max_sessions * sizeof(bool));
 
     for (int i = 0; i < max_sessions; ++i) {
         clients[i].session_id = i;
-        clients[i].to_execute = false;
+        clients[i].bool_cond = false;
         mutex_init(&clients[i].lock);
         if (pthread_cond_init(&clients[i].cond, NULL) != 0) {
             return -1;
         }
-        if (pthread_create(&clients[i].tid, NULL, client_session,
+        if (pthread_create(&clients[i].thread_id, NULL, client_session,
                            &clients[i]) != 0) {
             return -1;
         }
-        free_clients[i] = false;
+        free_clients[i] = true; // all clients are free in the beginning
     }
     mutex_init(&free_clients_lock);
     return 0;
