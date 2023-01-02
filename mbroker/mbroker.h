@@ -31,7 +31,7 @@ typedef enum  {
 
 typedef struct client {
     int session_id;
-    box_t *box;
+    box_t box;
     int client_pipe;
     client_type type;
 

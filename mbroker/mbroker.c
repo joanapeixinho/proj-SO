@@ -149,25 +149,37 @@ void *client_session(void *client_in_array) {
 
         int result = 0;
 
-        switch (client->packet.opcode) {
+        switch (client->box.opcode) { // TODO: implement handle functions
 
-        case TFS_OP_CODE_UNMOUNT:
-            result = handle_tfs_unmount(client);
+        case OP_CODE_REGIST_PUB:
+            result = handle_tfs_register(client);
             break;
-        case TFS_OP_CODE_OPEN:
-            result = handle_tfs_open(client);
+        case OP_CODE_REGIST_SUB:
+            result = handle_tfs_register(client);
             break;
-        case TFS_OP_CODE_CLOSE:
-            result = handle_tfs_close(client);
+        case OP_CODE_CREATE_BOX:
+            result = handle_tfs_create_box(client);
             break;
-        case TFS_OP_CODE_WRITE:
-            result = handle_tfs_write(client);
+        case OP_CODE_CREATE_BOX_ANSWER:
+            result = handle_tfs_create_box_answer(client);
             break;
-        case TFS_OP_CODE_READ:
-            result = handle_tfs_read(client);
+        case OP_CODE_REMOVE_BOX:
+            result = handle_tfs_remove_box(client);
             break;
-        case TFS_OP_CODE_SHUTDOWN_AFTER_ALL_CLOSED:
-            result = handle_tfs_shutdown_after_all_closed(client);
+        case OP_CODE_REMOVE_BOX_ANSWER:
+            result = handle_tfs_remove_box_answer(client);
+            break;
+        case OP_CODE_LIST_BOXES:
+            result = handle_tfs_list_boxes(client);
+            break;
+        case OP_CODE_LIST_BOXES_ANSWER:
+            result = handle_tfs_list_boxes_answer(client);
+            break;
+        case OP_CODE_PUBLISHER:
+            result = handle_tfs_write_box(client);
+            break;
+        case OP_CODE_SUBSCRIBER:
+            result = handle_tfs_read_box(client);
             break;
         default:
             break;
