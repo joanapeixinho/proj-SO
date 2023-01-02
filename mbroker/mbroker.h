@@ -14,12 +14,14 @@
  * clients. */
 
 typedef struct {
-    char opcode;
-    char client_pipename[PIPE_STRING_LENGTH + 1];
-    char box_name[BOX_NAME_LENGTH + 1];
-    int fhandle;
-    size_t len;
-    char *buffer;
+    char opcode; 
+    char client_pipename[PIPE_STRING_LENGTH + 1]; 
+    char box_name[BOX_NAME_LENGTH + 1]; 
+    int fhandle; //file handle for the box
+    size_t len; //total length of the messages in the box
+    char *buffer; //buffer to store the message
+    int n_publishers = 0; //0 or 1 max
+    int n_subscribers = 0; 
 } box_t;
 
 /*enum client type */
