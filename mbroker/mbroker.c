@@ -202,6 +202,37 @@ void *client_session(void *client_in_array) {
     }
 }
 
+int handle_tfs_register(client_t *client) {
+
+    switch (client->box.opcode) { // TODO: maybe delete client_types
+        case OP_CODE_REGIST_PUB:
+            client->type = PUBLISHER;
+            break;
+        case OP_CODE_REGIST_SUB:
+            client->type = SUBSCRIBER;
+            break;
+    }
+
+    char client_named_pipe_path[PIPE_STRING_LENGTH + 1];
+    read_pipe(server_pipe, client_named_pipe_path, sizeof(char) * PIPE_STRING_LENGTH);
+    client_named_pipe_path[PIPE_STRING_LENGTH] = '\0';
+
+    int session_id = get_free_client();
+    int client_pipe = tfs_open(client_named_pipe_path, O_WRONLY);
+    if (client_pipe < 0) {
+        perror("Failed to open pipe");
+        return -1;
+    }
+
+    if (session_id < 0) {
+        printf("The maximum number of sessions was exceeded.\n");
+    } else {
+        printf("The session number %d was created with success.\n", session_id);
+        clients[session_id].client_pipe = client_pipe;
+    }
+   
+    return 0;
+}
 
 void close_server() {
     if (close(server_pipe) < 0) {
