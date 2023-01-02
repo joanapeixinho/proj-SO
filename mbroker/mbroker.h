@@ -36,7 +36,7 @@ typedef struct client {
     box_t box;
     int client_pipe;
     client_type type;
-    bool bool_cond;
+    bool to_do;
     pthread_t thread_id;
     pthread_cond_t cond;
     pthread_mutex_t lock;

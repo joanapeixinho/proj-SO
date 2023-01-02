@@ -126,7 +126,7 @@ int init_mbroker() {
 
     for (int i = 0; i < max_sessions; ++i) {
         clients[i].session_id = i;
-        clients[i].bool_cond = false;
+        clients[i].to_do = false;
         mutex_init(&clients[i].lock);
         if (pthread_cond_init(&clients[i].cond, NULL) != 0) {
             return -1;
@@ -146,7 +146,7 @@ void *client_session(void *client_in_array) {
     while (true) {
         mutex_lock(&client->lock);
 
-        while (!client->bool_cond) {
+        while (!client->to_do) {
             if (pthread_cond_wait(&client->cond, &client->lock) != 0) {
                 perror("Failed to wait for condition variable");
                 close_server(EXIT_FAILURE);
@@ -197,7 +197,7 @@ void *client_session(void *client_in_array) {
             }
         }
 
-        client->bool_cond = false;
+        client->to_do = false;
         mutex_unlock(&client->lock);
     }
 }
