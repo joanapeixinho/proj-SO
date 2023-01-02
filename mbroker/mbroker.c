@@ -142,7 +142,7 @@ void *client_session(void *client_in_array) {
     while (true) {
         mutex_lock(&client->lock);
 
-        while (!client->bool_cond) {
+        while (!client->to_do) {
             if (pthread_cond_wait(&client->cond, &client->lock) != 0) {
                 perror("Failed to wait for condition variable");
                 close_server(EXIT_FAILURE);
@@ -193,7 +193,7 @@ void *client_session(void *client_in_array) {
             }
         }
 
-        client->bool_cond = false;
+        client->to_do = false;
         mutex_unlock(&client->lock);
     }
 }
