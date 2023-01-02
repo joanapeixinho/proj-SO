@@ -80,25 +80,25 @@ int main(int argc, char **argv) {
 
             switch (op_code) {
                 case OP_CODE_REGIST_PUB:
-                    // parser for regist pub 
-                    box_regist_parser(server_pipe, op_code);
+                    parser(op_code, parse_box);
                     break;
                 case OP_CODE_REGIST_SUB:
-                    
+                    parser(op_code, parse_box);
                     break;
                 case OP_CODE_CREATE_BOX:
+                    parser(op_code, parse_box);
                     break;
                 case OP_CODE_CREATE_BOX_ANSWER:
                     break;
                 case OP_CODE_REMOVE_BOX:
+                    parser(op_code, parse_box);
                     break;
                 case OP_CODE_REMOVE_BOX_ANSWER:
                     break;
                 case OP_CODE_LIST_BOXES:
+                    parser(op_code, parse_list);
                     break;
                 case OP_CODE_LIST_BOXES_ANSWER:
-                    break;
-                case OP_CODE_PUBLISHER:
                     break;
                 default:
                     printf("Invalid operation code %c\n", op_code);
@@ -192,7 +192,7 @@ void *client_session(void *client_in_array) {
         if (result != 0) {
             /* if there is an error during the handling of the message, discard
              * this session */
-            if (free_client(client->session_id) == -1) {
+            if (free_client_session(client->session_id) == -1) {
                 perror("Failed to free client");
                 close_server(EXIT_FAILURE);
             }
@@ -223,7 +223,7 @@ int handle_tfs_register(client_t *client) {
     return 0;
 }
 
-int free_client(int session_id) {
+int free_client_session(int session_id) {
     mutex_lock(&free_clients_lock);
     if (free_clients[session_id] == true) {
         mutex_unlock(&free_clients_lock);
@@ -234,7 +234,7 @@ int free_client(int session_id) {
     return 0;
 }
 
-int get_free_client() {
+int get_free_client_session() {
     mutex_lock(&free_clients_lock);
     for (int i = 0; i < max_sessions; ++i) {
         if (free_clients[i] == true) {
@@ -257,4 +257,41 @@ void close_server(int exit_code) {
     free(clients);
     free(free_clients);
     exit(exit_code);
+}
+
+parse (char op_code, int parser_fnc (client_t *)) {
+    int session_id = get_free_client_session();
+    if (session_id == -1) {
+        printf("No free sessions\n");
+        return -1;
+    }
+    client_t *client = &clients[session_id];
+    client->box.opcode = op_code;
+    int result = parser_fnc(client);
+    if (result != 0) {
+        printf("Failed to parse message\n");
+        return -1;
+    }
+    mutex_lock(&client->lock);
+    client->to_do = true;
+    if (pthread_cond_signal(&client->cond) != 0) {
+        perror("Failed to signal condition variable");
+        return -1;
+    }
+    mutex_unlock(&client->lock);
+    return 0;
+}
+
+parse_box(client_t *client) {
+    read_pipe(server_pipe, &client->box.client_pipename, sizeof(char)* PIPE_NAME_LENGTH);
+    client->box.client_pipename[PIPE_NAME_LENGTH - 1] = '\0';
+    read_pipe(server_pipe, &client->box.box_name, sizeof(char)* BOX_NAME_LENGTH);
+    client->box.box_name[BOX_NAME_LENGTH - 1] = '\0';
+    return 0;
+}
+
+parse_list (client_t *client) {
+    read_pipe(server_pipe, &client->box.client_pipename, sizeof(char)* PIPE_NAME_LENGTH);
+    client->box.client_pipename[PIPE_NAME_LENGTH - 1] = '\0';
+    return 0;
 }

@@ -4,7 +4,7 @@
 #include <sys/types.h>
 
 #define PIPE_BUFFER_MAX_LEN (PIPE_BUF)
-#define PIPE_STRING_LENGTH (255)
+#define PIPE_NAME_LENGTH (255)
 #define BOX_NAME_LENGTH (31)
 #define ERROR_MESSAGE_LENGTH (1024)
 #define MESSAGE_LENGTH (1024)
