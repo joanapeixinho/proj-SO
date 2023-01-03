@@ -6,18 +6,22 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <sys/types.h>
+#include <stdint.h>
+
+
+typedef struct message {
+    uint8_t opcode;
+    char *buffer;
+    size_t len;
+} message_t;
 
 
 
 
 /* box_t is the structure that is used to communicate between the broker and the
  * clients. */
-
 typedef struct {
     char opcode; 
-
-    // TO DO: should we store the client pipe name here? or only use it to open the pipe?
-    char client_pipename[PIPE_NAME_LENGTH + 1]; 
     char box_name[BOX_NAME_LENGTH + 1]; 
     int fhandle; //file handle for the box
     size_t len; //total length of the messages in the box
@@ -26,12 +30,8 @@ typedef struct {
     int n_subscribers; 
 } box_t;
 
-/*enum client type */
-typedef enum  {
-    PUBLISHER,
-    SUBSCRIBER, 
-    MANAGER
-} client_type;
+/* client_t is the structure that is used to store the information about the
+ * client sessions */
 
 typedef struct client {
     int session_id;
@@ -43,6 +43,7 @@ typedef struct client {
     pthread_cond_t cond;
     pthread_mutex_t lock;
 } client_t;
+
 
 // server functions
 int mbroker_init();
