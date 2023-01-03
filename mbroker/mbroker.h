@@ -37,7 +37,6 @@ typedef struct client {
     int session_id;
     box_t box;
     int client_pipe;
-    client_type type;
     bool to_do;
     pthread_t thread_id;
     pthread_cond_t cond;
