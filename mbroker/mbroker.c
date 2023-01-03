@@ -284,9 +284,9 @@ parse (char op_code, int parser_fnc (client_t *)) {
 
 parse_box(client_t *client) {
     read_pipe(server_pipe, &client->box.client_pipename, sizeof(char)* PIPE_NAME_LENGTH);
-    client->box.client_pipename[PIPE_NAME_LENGTH - 1] = '\0';
+    client->box.client_pipename[PIPE_NAME_LENGTH] = '\0';
     read_pipe(server_pipe, &client->box.box_name, sizeof(char)* BOX_NAME_LENGTH);
-    client->box.box_name[BOX_NAME_LENGTH - 1] = '\0';
+    client->box.box_name[BOX_NAME_LENGTH] = '\0';
     return 0;
 }
 
