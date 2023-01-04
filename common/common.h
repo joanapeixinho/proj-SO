@@ -7,7 +7,7 @@
 #define PIPE_NAME_LENGTH (255)
 #define BOX_NAME_LENGTH (31)
 #define ERROR_MESSAGE_LENGTH (1024)
-#define MESSAGE_LENGTH (1024)
+#define MESSAGE_LENGTH (1023)
 
 
 /* operation codes */
