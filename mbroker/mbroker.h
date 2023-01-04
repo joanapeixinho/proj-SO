@@ -15,11 +15,9 @@ typedef struct message {
     size_t len;
 } message_t;
 
-
-
-
 /* box_t is the structure that is used to communicate between the broker and the
  * clients. */
+
 typedef struct {
     char opcode; 
     char box_name[BOX_NAME_LENGTH + 1]; 
@@ -37,7 +35,6 @@ typedef struct client {
     int session_id;
     box_t box;
     int client_pipe;
-    client_type type;
     bool to_do;
     pthread_t thread_id;
     pthread_cond_t cond;

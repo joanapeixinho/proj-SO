@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    while (true) {
+    for (;;) {
         /* Open and close a temporary pipe to avoid having active wait for another
          * process to open the pipe. The 'open' function blocks until the pipe
          * is openned on the other side, therefore doing exactly what we want.
