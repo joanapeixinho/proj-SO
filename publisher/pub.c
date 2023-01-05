@@ -7,17 +7,24 @@
 
 int main(int argc, char **argv) {
     
+
     if (argc != 3) {
         fprintf(stderr, "Usage: pub <register_pipe> <pipe_name> <box_name>\n");
         return -1;
     }
 
+    char* register_pipe = argv[1];
 
     char* buffer = parse_mesage(OP_CODE_REGIST_PUB, argv[2], argv[3]);
+    int register_pipe_fd = open(register_pipe, O_WRONLY);
+    if (register_pipe_fd < 0) {
+        fprintf(stderr, "Failed to open register pipe %s\n", register_pipe);
+        return -1;
+    }
     //Try to register the publisher
     write_pipe(register_pipe, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
 
-
+   
     char* message[MESSAGE_LENGTH + 1];              //The message is composed by the op_code(+1) and the message text
     char* message_text = message + sizeof(uint8_t); //The message text starts after the op_code
     uint8_t op_code = OP_CODE_PUBLISHER;
@@ -33,7 +40,6 @@ int main(int argc, char **argv) {
         }
         write_pipe(pipe_name, message, sizeof(uint8_t) + MESSAGE_LENGTH*sizeof(char)); 
     }
-    
     return -1;
 }
 
