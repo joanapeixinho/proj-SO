@@ -6,7 +6,7 @@
 
 
 int main(int argc, char **argv) {
-    if (argc != 3) {
+    if (argc != 4) {
         fprintf(stderr, "Usage: pub <register_pipe> <pipe_name> <box_name>\n");
         return -1;
     }
@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 
     //Read from stdin until user presses ctrl+d
     char* message[MESSAGE_LENGTH + 1];              //The message is composed by the op_code(+1) and the message text
-    char* message_text = message + sizeof(uint8_t); //The message text starts after the op_code
+    char* message_text = message + 1; //The message text starts after the op_code
     memcpy(message, &op_code, sizeof(uint8_t));
     size_t len = MESSAGE_LENGTH; 
     while(true){
