@@ -2,6 +2,9 @@
 #include <stdbool.h>
 #include <common/common.h>
 #include <stdint.h>
+#include <signal.h>
+
+int message_count = 0;
 
 int main(int argc, char **argv) {
   
@@ -10,11 +13,13 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    int message_count = 0;
+    signal(SIGINT, sigint_handler);
+    
 
     char* register_pipe = argv[1];
+    char* pipe_name = argv[2];
    
-    char* buffer = parse_mesage(OP_CODE_REGIST_SUB, argv[2], argv[3]);
+    char* buffer = parse_mesage(OP_CODE_REGIST_SUB, pipe_name, argv[3]);
     int register_pipe_fd = open(register_pipe, O_WRONLY);
     if (register_pipe_fd < 0) {
         fprintf(stderr, "Failed to open register pipe %s\n", register_pipe);
@@ -22,18 +27,28 @@ int main(int argc, char **argv) {
     }
     //Try to register the subscriber
     write_pipe(register_pipe_fd, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
-    
-    //Write in stdout until user presses ctrl+d
-    u_int8_t op_code;
+    int pipe_fd = open(pipe_name, O_RDONLY);
+    uint8_t op_code;
     char* message[MESSAGE_LENGTH + 1];      //The message has max 255 chars + a '\0' at the end
     size_t len = MESSAGE_LENGTH; 
+    
     while(true){
         //Each message from the pipe is a new line
-        read_pipe(pipe_name, &op_code, sizeof(uint8_t));
-        read_pipe(pipe_name, message, MESSAGE_LENGTH*sizeof(char));
+        read_pipe(pipe_fd, &op_code, sizeof(uint8_t));
+        read_pipe(pipe_fd, message, MESSAGE_LENGTH*sizeof(char));
+        message_count++;
         fprintf(stdout, "%s\n", message);
-
     }
-
     return -1;
 }
+
+
+
+void sigint_handler(int signum) {
+    printf("Received SIGINT. Closing session...\n");
+    printf("Received %d messages\n", message_count);
+    exit(0);
+}
+
+
+//Path: subscriber/sub.c

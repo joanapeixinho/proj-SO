@@ -31,7 +31,8 @@ int main(int argc, char **argv) {
     memcpy(message, &op_code, sizeof(uint8_t));
     size_t len = MESSAGE_LENGTH; 
 
-    //Read from stdin until user presses ctrl + d
+    //Read from stdin until reaches EOF
+    
     while(true){
         //Each line from stdin is a message_text
         memset(message_text,0,MESSAGE_LENGTH*sizeof(char)); //Clear the message text
