@@ -13,17 +13,18 @@ int main(int argc, char **argv) {
     }
 
 
-    char* buffer = parse_mesage(OP_CODE_REGIST_PUB, argv[1], argv[2], argv[3]);
-
+    char* buffer = parse_mesage(OP_CODE_REGIST_PUB, argv[2], argv[3]);
     //Try to register the publisher
     write_pipe(register_pipe, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
 
-    //Read from stdin until user presses ctrl+d
+
     char* message[MESSAGE_LENGTH + 1];              //The message is composed by the op_code(+1) and the message text
     char* message_text = message + sizeof(uint8_t); //The message text starts after the op_code
+    uint8_t op_code = OP_CODE_PUBLISHER;
     memcpy(message, &op_code, sizeof(uint8_t));
     size_t len = MESSAGE_LENGTH; 
 
+    //Read from stdin until user presses ctrl+d
     while(true){
         //Each line from stdin is a message_text
         memset(message_text,0,MESSAGE_LENGTH*sizeof(char)); //Clear the message text

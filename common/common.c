@@ -20,15 +20,11 @@ ssize_t try_write(int fd, const void *buf, size_t count) {
     return bytes_written;
 }
 
-char * parse_mesage(u_int8_t opcode, char* register_pipe, char * pipename, char * box_name ) {
+char * parse_mesage(u_int8_t opcode, char * pipename, char * box_name ) {
     
-    char * buffer;
+    char buffer [CLIENT_NAMED_PIPE_PATH_LENGTH  + BOX_NAME_LENGTH + 1] = {0};
     char * tmp = buffer;
     
-    char register_pipe[CLIENT_NAMED_PIPE_PATH_LENGTH] = {0};
-    char pipe_name[CLIENT_NAMED_PIPE_PATH_LENGTH] = {0};
-    char box_name[BOX_NAME_LENGTH] = {0};
-
     memcpy(tmp, &opcode, sizeof(uint8_t));
     tmp++;                 //Move the pointer to the next position
     memcpy(tmp, pipename, CLIENT_NAMED_PIPE_PATH_LENGTH);
