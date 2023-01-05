@@ -9,20 +9,22 @@ static void print_usage() {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 3) {
+    if (argc < 4) {
         print_usage();
         return -1;
     }
 
     char* register_pipe_name = argv[1];
-    char* command = argv[2];
+    char* pipe_name = argv[2];
+    char* command = argv[3];
+    char* buffer;
 
     if (strcmp(command, "create") == 0 || strcmp(command, "remove") == 0) {
         if (argc != 4) {
             print_usage();
             return -1;
         }
-        char* box_name = argv[3];
+        char* box_name = argv[4];
         if (strcmp(command, "create") == 0) {
             printf("create %s ", box_name); //TODO implement create
         } else {

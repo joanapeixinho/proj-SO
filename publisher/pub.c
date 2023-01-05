@@ -6,9 +6,7 @@
 
 
 int main(int argc, char **argv) {
-    
-
-    if (argc != 3) {
+    if (argc != 4) {
         fprintf(stderr, "Usage: pub <register_pipe> <pipe_name> <box_name>\n");
         return -1;
     }

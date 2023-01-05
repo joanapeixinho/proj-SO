@@ -5,7 +5,7 @@
 
 int main(int argc, char **argv) {
   
-    if (argc != 3) {
+    if (argc != 4) {
         fprintf(stderr, "Usage: sub <register_pipe> <pipe_name> <box_name>\n");
         return -1;
     }
@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
         //Each message from the pipe is a new line
         read_pipe(pipe_name, &op_code, sizeof(uint8_t));
         read_pipe(pipe_name, message, MESSAGE_LENGTH*sizeof(char));
-        printf("%s\n", message);
+        fprintf(stdout, "%s\n", message);
 
     }
 
