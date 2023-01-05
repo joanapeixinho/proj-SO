@@ -44,15 +44,17 @@ ssize_t try_read(int fd, void *buf, size_t count);
 ssize_t try_write(int fd, const void *buf, size_t count);
 
 /* check if all the content was read from the pipe. */
-#define read_pipe(pipe, buffer, size)                                          \
-    if (try_read(pipe, buffer, size) != size) {                                \
-        return -1;                                                             \
+#define read_pipe(pipe, buffer, size)                                          
+    if (try_read(pipe, buffer, size) != size) {                                
+        return -1;                                                             
     }
 
 /* check if all the content was written to the pipe. */
-#define write_pipe(pipe, buffer, size)                                         \
-    if (try_write(pipe, buffer, size) != size) {                               \
-        return -1;                                                             \
+#define write_pipe(pipe, buffer, size)                                         
+    if (try_write(pipe, buffer, size) != size) {                               
+        return -1;                                                             
     }
+
+char * parse_message(u_int8_t opcode, char* register_pipe, char * pipename, char * box_name );
 
 #endif /* COMMON_H */
