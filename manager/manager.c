@@ -1,6 +1,8 @@
 #include "logging.h"
 #include <stdio.h>
 #include <string.h>
+#include <common/common.h>
+
 static void print_usage() {
     fprintf(stderr, "usage: \n"
                     "   manager <register_pipe_name> create <box_name>\n"
@@ -20,25 +22,29 @@ int main(int argc, char **argv) {
     char* buffer;
 
     if (strcmp(command, "create") == 0 || strcmp(command, "remove") == 0) {
-        if (argc != 4) {
+        if (argc != 5) {
             print_usage();
             return -1;
         }
         char* box_name = argv[4];
         if (strcmp(command, "create") == 0) {
-            printf("create %s ", box_name); //TODO implement create
+            buffer = parse_mesage(OP_CODE_CREATE_BOX_ANSWER, pipe_name, box_name);
         } else {
-            printf("remove %s ", box_name); //TODO implement remove
+            buffer = parse_mesage(OP_CODE_REMOVE_BOX, pipe_name, box_name);
         }
+
+        
+
     } else if (strcmp(command, "list") == 0) {
-        if (argc != 3) {
+        if (argc != 4) {
             print_usage();
             return -1;
         }
-        printf("list"); //TODO implement list
+        buffer = parse_mesage(OP_CODE_LIST_BOXES, pipe_name, NULL);
     } else {
         print_usage();
         return -1;
     }
+
     return -1;
 }
