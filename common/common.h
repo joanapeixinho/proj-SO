@@ -2,6 +2,8 @@
 #define __COMMON_H__
 
 #include <sys/types.h>
+#include <fcntl.h>
+
 
 #define PIPE_BUFFER_MAX_LEN (PIPE_BUF)
 #define CLIENT_NAMED_PIPE_PATH_LENGTH (255)
@@ -55,6 +57,6 @@ ssize_t try_write(int fd, const void *buf, size_t count);
         return -1;                                                             
     }
 
-char * parse_message(u_int8_t opcode, char* register_pipe, char * pipename, char * box_name );
+char * parse_message(u_int8_t opcode, char * pipename, char * box_name );
 
 #endif /* COMMON_H */
