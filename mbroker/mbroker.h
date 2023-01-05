@@ -9,17 +9,12 @@
 #include <stdint.h>
 
 
-typedef struct message {
-    uint8_t opcode;
-    char *buffer;
-    size_t len;
-} message_t;
 
 /* box_t is the structure that is used to communicate between the broker and the
  * clients. */
 
 typedef struct {
-    char opcode; 
+    uint8_t opcode; 
     char box_name[BOX_NAME_LENGTH + 1]; 
     int fhandle; //file handle for the box
     size_t len; //total length of the messages in the box
@@ -34,7 +29,7 @@ typedef struct {
 typedef struct client {
     int session_id;
     box_t box;
-    int client_pipe;
+    char client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH + 1];
     bool to_do;
     pthread_t thread_id;
     pthread_cond_t cond;

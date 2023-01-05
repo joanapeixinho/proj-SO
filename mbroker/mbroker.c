@@ -116,8 +116,6 @@ int main(int argc, char **argv) {
         
     }
 
-    
-
     return -1;
 }
 
@@ -205,9 +203,8 @@ void *client_session(void *client_in_array) {
 
 int handle_tfs_register(client_t *client) {
 
-
     int session_id = get_free_client();
-    int client_pipe = open(client->client_named_pipe_path, O_WRONLY);
+    int client_pipe = client->client_pipe;
     if (client_pipe < 0) {
         perror("Failed to open pipe");
         return -1;
@@ -282,16 +279,36 @@ parse (char op_code, int parser_fnc (client_t *)) {
     return 0;
 }
 
-parse_box(client_t *client) {
-    read_pipe(server_pipe, &client->box.client_pipename, sizeof(char)* PIPE_NAME_LENGTH);
-    client->box.client_pipename[PIPE_NAME_LENGTH] = '\0';
+parse_box(client_t * client) {
+    
+    //read opcode to client from pipe
+    read_pipe(server_pipe, &client->box.opcode, sizeof(uint8_t));
+    //read client pipename to client from pipe
+    read_pipe(server_pipe, &client->client_pipename, sizeof(char)* CLIENT_NAMED_PIPE_PATH_LENGTH);
+    //read box name to client from pipe
     read_pipe(server_pipe, &client->box.box_name, sizeof(char)* BOX_NAME_LENGTH);
-    client->box.box_name[BOX_NAME_LENGTH] = '\0';
+
+    //make sure the strings are null terminated
+    client->client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH - 1] = '\0';
+    client->box.box_name[BOX_NAME_LENGTH - 1] = '\0';
+
+    if (unlink(client->client_pipename) == -1 ) {
+        perror("Failed to unlink client pipe");
+        return -1;
+    }
+    
+    if (mkfifo(client->client_pipename, 0777) == -1) {
+        perror("Failed to create client pipe");
+        return -1;
+    }
+
     return 0;
 }
 
 parse_list (client_t *client) {
-    read_pipe(server_pipe, &client->box.client_pipename, sizeof(char)* PIPE_NAME_LENGTH);
-    client->box.client_pipename[PIPE_NAME_LENGTH - 1] = '\0';
-    return 0;
+    //read opcode to client from pipe
+    read_pipe(server_pipe, &client->box.opcode, sizeof(uint8_t));
+    //read client pipename to client from pipe
+    read_pipe(server_pipe, &client->client_pipename, sizeof(char)* CLIENT_NAMED_PIPE_PATH_LENGTH);
+
 }
