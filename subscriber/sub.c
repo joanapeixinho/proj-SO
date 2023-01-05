@@ -6,6 +6,7 @@
 
 int message_count = 0;
 
+
 int main(int argc, char **argv) {
   
     if (argc != 4) {
@@ -13,7 +14,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    signal(SIGINT, sigint_handler);
+    
     
 
     char* register_pipe = argv[1];
@@ -28,6 +29,12 @@ int main(int argc, char **argv) {
     //Try to register the subscriber
     write_pipe(register_pipe_fd, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
     int pipe_fd = open(pipe_name, O_RDONLY);
+    if (pipe_fd < 0) {
+        fprintf(stderr, "Failed to open pipe %s\n", pipe_name);
+        return -1;
+    }
+    signal(SIGINT, sigint_handler);
+
     uint8_t op_code;
     char* message[MESSAGE_LENGTH + 1];      //The message has max 255 chars + a '\0' at the end
     size_t len = MESSAGE_LENGTH; 
@@ -43,10 +50,11 @@ int main(int argc, char **argv) {
 }
 
 
-
-void sigint_handler(int signum) {
+void sigint_handler(int signum, int pipe_fd) {
     printf("Received SIGINT. Closing session...\n");
     printf("Received %d messages\n", message_count);
+    //should i close pipe here????? does this work?
+    close_pipe(pipe_fd);
     exit(0);
 }
 
