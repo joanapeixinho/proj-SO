@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
         return -1;
     }
     
-    if (server_pipe = open(pipename, O_RDONLY ) < 0 ) {
+    if (server_pipe = open(pipename, O_RDONLY) < 0 ) {
         printf("Failed to open server pipe %s\n", pipename);
         unlink(pipename);
         return -1;
@@ -204,7 +204,9 @@ void *client_session(void *client_in_array) {
 int handle_tfs_register(client_t *client) {
 
     int session_id = get_free_client();
-    int client_pipe = client->client_pipe;
+
+    int client_pipe = open(client->client_pipename, O_WRONLY);
+
     if (client_pipe < 0) {
         perror("Failed to open pipe");
         return -1;

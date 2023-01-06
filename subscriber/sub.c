@@ -5,7 +5,7 @@
 #include <signal.h>
 
 int message_count = 0;
-
+int pipe_fd;
 
 int main(int argc, char **argv) {
   
@@ -28,11 +28,19 @@ int main(int argc, char **argv) {
     }
     //Try to register the subscriber
     write_pipe(register_pipe_fd, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
-    int pipe_fd = open(pipe_name, O_RDONLY);
+    
+    //create the pipe
+    if (mkfifo(pipe_name, 0777) < 0) {
+        fprintf(stderr, "Failed to create pipe %s\n", pipe_name);
+        return -1;
+    }
+    
+    pipe_fd = open(pipe_name, O_RDONLY);
     if (pipe_fd < 0) {
         fprintf(stderr, "Failed to open pipe %s\n", pipe_name);
         return -1;
     }
+    
     signal(SIGINT, sigint_handler);
 
     uint8_t op_code;
@@ -50,13 +58,18 @@ int main(int argc, char **argv) {
 }
 
 
-void sigint_handler(int signum, int pipe_fd) {
+void sigint_handler(int signum) {
     printf("Received SIGINT. Closing session...\n");
-    printf("Received %d messages\n", message_count);
-    //should i close pipe here????? does this work?
     close_pipe(pipe_fd);
+    printf("Received %d messages\n", message_count);
     exit(0);
 }
 
 
 //Path: subscriber/sub.c
+/* 
+Mudar o mkfifo pra ser dentro do manager/pub/sub
+
+Assim o open dentro deles nao vai dar erro caso o 
+
+mbroker ainda nao tenha feito o mkfifo */

@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
 
     char* buffer = parse_mesage(OP_CODE_REGIST_PUB, pipe_name, argv[3]);
     int register_pipe_fd = open(register_pipe, O_WRONLY);
-    int pipe_fd = open(pipe_name, O_WRONLY);
+   
     if (register_pipe_fd < 0) {
         fprintf(stderr, "Failed to open register pipe %s\n", register_pipe);
         return -1;
@@ -24,6 +24,12 @@ int main(int argc, char **argv) {
     //Try to register the publisher
     write_pipe(register_pipe, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
 
+    //create the pipe
+    if (mkfifo(pipe_name, 0777) < 0) {
+        fprintf(stderr, "Failed to create pipe %s\n", pipe_name);
+        return -1;
+    }
+    int pipe_fd = open(pipe_name, O_WRONLY);
    
     char* message[MESSAGE_LENGTH + 1];              //The message is composed by the op_code(+1) and the message text
     char* message_text = message + sizeof(uint8_t); //The message text starts after the op_code

@@ -47,13 +47,15 @@ ssize_t try_write(int fd, const void *buf, size_t count);
 
 /* check if all the content was read from the pipe. */
 #define read_pipe(pipe, buffer, size)                                          
-    if (try_read(pipe, buffer, size) != size) {                                
+    if (try_read(pipe, buffer, size) != size) { 
+        printf("Failed to read from pipe %d", pipe);
         return -1;                                                             
     }
 
 /* check if all the content was written to the pipe. */
 #define write_pipe(pipe, buffer, size)                                         
     if (try_write(pipe, buffer, size) != size) {                               
+        printf("Failed to write to pipe %d", pipe);
         return -1;                                                             
     }
 

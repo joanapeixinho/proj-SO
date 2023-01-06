@@ -30,6 +30,7 @@ typedef struct client {
     int session_id;
     box_t box;
     char client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH + 1];
+    int client_pipe;
     bool to_do;
     pthread_t thread_id;
     pthread_cond_t cond;
