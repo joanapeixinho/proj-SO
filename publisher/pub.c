@@ -23,12 +23,19 @@ int main(int argc, char **argv) {
     }
     //Try to register the publisher
     write_pipe(register_pipe, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
-
+   //Delete the pipe if it already exists
+   
+    if (unlink(pipe_name) < 0) {
+        fprintf(stderr, "Failed to delete pipe %s\n", pipe_name);
+        return -1;
+    }
+    
     //create the pipe
     if (mkfifo(pipe_name, 0777) < 0) {
         fprintf(stderr, "Failed to create pipe %s\n", pipe_name);
         return -1;
     }
+
     int pipe_fd = open(pipe_name, O_WRONLY);
    
     char* message[MESSAGE_LENGTH + 1];              //The message is composed by the op_code(+1) and the message text

@@ -293,17 +293,6 @@ parse_box(client_t * client) {
     //make sure the strings are null terminated
     client->client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH - 1] = '\0';
     client->box.box_name[BOX_NAME_LENGTH - 1] = '\0';
-
-    if (unlink(client->client_pipename) == -1 ) {
-        perror("Failed to unlink client pipe");
-        return -1;
-    }
-    
-    if (mkfifo(client->client_pipename, 0777) == -1) {
-        perror("Failed to create client pipe");
-        return -1;
-    }
-
     return 0;
 }
 

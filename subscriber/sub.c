@@ -29,12 +29,17 @@ int main(int argc, char **argv) {
     //Try to register the subscriber
     write_pipe(register_pipe_fd, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
     
+    if (unlink(pipe_name) < 0) {
+        fprintf(stderr, "Failed to delete pipe %s\n", pipe_name);
+        return -1;
+    }
+    
     //create the pipe
     if (mkfifo(pipe_name, 0777) < 0) {
         fprintf(stderr, "Failed to create pipe %s\n", pipe_name);
         return -1;
     }
-    
+
     pipe_fd = open(pipe_name, O_RDONLY);
     if (pipe_fd < 0) {
         fprintf(stderr, "Failed to open pipe %s\n", pipe_name);
