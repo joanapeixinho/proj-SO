@@ -59,6 +59,24 @@ ssize_t try_write(int fd, const void *buf, size_t count);
         return -1;                                                             
     }
 
+#define safe_close(fd)                                                         
+    if (close(fd) < 0) {                                                       
+        printf("Failed to close file descriptor %d", fd);
+        return -1;                                                             
+    }
+
+#define safe_mutex_lock(mutex)                                                 
+    if (pthread_mutex_lock(mutex) != 0) {                                      
+        printf("Failed to lock mutex %p", mutex);
+        return -1;                                                             
+    }
+
+#define safe_mutex_unlock(mutex)
+    if (pthread_mutex_unlock(mutex) != 0) {                                    
+        printf("Failed to unlock mutex %p", mutex);
+        return -1;                                                             
+    }
+
 char * parse_message(u_int8_t opcode, char * pipename, char * box_name );
 
 #endif /* COMMON_H */

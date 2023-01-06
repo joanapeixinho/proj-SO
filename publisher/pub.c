@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
             printf("Failed to read line\n");
         }
         if (strcmp(message_text, EOF ) == 0) {
-            close(pipe_fd);
+            safe_close(pipe_fd);
             return 0;
         }
 

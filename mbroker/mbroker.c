@@ -143,7 +143,7 @@ int init_mbroker() {
 void *client_session(void *client_in_array) {
     client_t *client = (client_t *)client_in_array;
     while (true) {
-        mutex_lock(&client->lock);
+        safe_mutex_lock(&client->lock);
 
         while (!client->to_do) {
             if (pthread_cond_wait(&client->cond, &client->lock) != 0) {
@@ -197,7 +197,7 @@ void *client_session(void *client_in_array) {
         }
 
         client->to_do = false;
-        mutex_unlock(&client->lock);
+        safe_mutex_unlock(&client->lock);
     }
 }
 
@@ -223,26 +223,26 @@ int handle_tfs_register(client_t *client) {
 }
 
 int free_client_session(int session_id) {
-    mutex_lock(&free_clients_lock);
+    safe_mutex_lock(&free_clients_lock);
     if (free_clients[session_id] == true) {
-        mutex_unlock(&free_clients_lock);
+        safe_mutex_unlock(&free_clients_lock);
         return -1;
     }
     free_clients[session_id] = true;
-    mutex_unlock(&free_clients_lock);
+    safe_mutex_unlock(&free_clients_lock);
     return 0;
 }
 
 int get_free_client_session() {
-    mutex_lock(&free_clients_lock);
+    safe_mutex_lock(&free_clients_lock);
     for (int i = 0; i < max_sessions; ++i) {
         if (free_clients[i] == true) {
             free_clients[i] = false;
-            mutex_unlock(&free_clients_lock);
+            safe_mutex_unlock(&free_clients_lock);
             return i;
         }
     }
-    mutex_unlock(&free_clients_lock);
+    safe_mutex_unlock(&free_clients_lock);
     return -1;
 }
 
@@ -271,13 +271,13 @@ parse (char op_code, int parser_fnc (client_t *)) {
         printf("Failed to parse message\n");
         return -1;
     }
-    mutex_lock(&client->lock);
+    safe_mutex_lock(&client->lock);
     client->to_do = true;
     if (pthread_cond_signal(&client->cond) != 0) {
         perror("Failed to signal condition variable");
         return -1;
     }
-    mutex_unlock(&client->lock);
+    safe_mutex_unlock(&client->lock);
     return 0;
 }
 

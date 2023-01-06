@@ -46,7 +46,10 @@ int main(int argc, char **argv) {
         return -1;
     }
     
-    signal(SIGINT, sigint_handler);
+    if (signal(SIGINT, sigint_handler) == SIG_ERR) {
+        fprintf(stderr, "Failed to register SIGINT handler\n");
+        return -1;
+    }
 
     uint8_t op_code;
     char* message[MESSAGE_LENGTH + 1];      //The message has max 255 chars + a '\0' at the end
@@ -63,18 +66,19 @@ int main(int argc, char **argv) {
 }
 
 
-void sigint_handler(int signum) {
-    printf("Received SIGINT. Closing session...\n");
-    close_pipe(pipe_fd);
-    printf("Received %d messages\n", message_count);
+void sigint_handler(int sig) {
+    if (sig == SIGINT) {
+    fprintf(stdout, "Received SIGINT. Closing pipe and exiting...\n");
+    //close session
+    safe_close(pipe_fd);
+    fprintf(stdout, "Received %d messages\n", message_count);
     exit(0);
+    }
+    else {
+        fprintf(stderr, "Received unexpected signal %d\n", sig);
+        exit(-1);
+    }
 }
 
 
 //Path: subscriber/sub.c
-/* 
-Mudar o mkfifo pra ser dentro do manager/pub/sub
-
-Assim o open dentro deles nao vai dar erro caso o 
-
-mbroker ainda nao tenha feito o mkfifo */
