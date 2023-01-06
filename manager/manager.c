@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
         }
         write_pipe(register_pipe_name, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
         
-        //read [] code | return_code | error_message ] from mbroker
+        //read [ code | return_code | error_message ] from mbroker
         read_pipe(pipe_name, &return_op_code, sizeof(uint8_t));
         read_pipe(pipe_name, &return_code, sizeof(int32_t));
         read_pipe(pipe_name, error_message, MESSAGE_LENGTH*sizeof(char));
