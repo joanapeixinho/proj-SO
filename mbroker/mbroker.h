@@ -14,7 +14,6 @@
  * clients. */
 
 typedef struct {
-    uint8_t opcode; 
     char box_name[BOX_NAME_LENGTH + 1]; 
     int fhandle; //file handle for the box
     uint64_t box_size; //total length of the messages in the box
@@ -27,8 +26,9 @@ typedef struct {
  * client sessions */
 
 typedef struct client {
+    uint8_t opcode; 
     int session_id;
-    box_t box;
+    box_t *box;
     char client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH + 1];
     int client_pipe;
     bool to_do;

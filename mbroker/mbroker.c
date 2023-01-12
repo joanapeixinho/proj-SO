@@ -13,6 +13,7 @@ static char *pipename;
 
 static client_t *clients;
 static box_t *boxes;
+static pthread_mutex_t boxes_lock;
 
 static bool *free_clients;
 static pthread_mutex_t free_clients_lock;
@@ -134,6 +135,7 @@ int mbroker_init() {
         free_clients[i] = true; // all clients are free in the beginning
     }
     mutex_init(&free_clients_lock);
+    mutex_init(&boxes_lock);
     return 0;
 }
 
@@ -151,7 +153,7 @@ void *client_session(void *client_in_array) {
 
         int result = 0;
 
-        switch (client->box.opcode) { // TODO: implement handle functions
+        switch (client->opcode) { // TODO: implement handle functions
 
         case OP_CODE_REGIST_PUB:
             result = handle_tfs_register(client);
@@ -162,20 +164,11 @@ void *client_session(void *client_in_array) {
         case OP_CODE_CREATE_BOX:
             result = handle_tfs_create_box(client);
             break;
-        case OP_CODE_CREATE_BOX_ANSWER:
-            result = handle_tfs_create_box_answer(client);
-            break;
         case OP_CODE_REMOVE_BOX:
             result = handle_tfs_remove_box(client);
             break;
-        case OP_CODE_REMOVE_BOX_ANSWER:
-            result = handle_tfs_remove_box_answer(client);
-            break;
         case OP_CODE_LIST_BOXES:
             result = handle_tfs_list_boxes(client);
-            break;
-        case OP_CODE_LIST_BOXES_ANSWER:
-            result = handle_tfs_list_boxes_answer(client);
             break;
         case OP_CODE_PUBLISHER:
             result = handle_tfs_write_box(client);
@@ -201,7 +194,7 @@ void *client_session(void *client_in_array) {
 
 int handle_tfs_register(client_t *client) {
 
-    int session_id = get_free_client();
+    int session_id = get_free_client_session();
 
     int client_pipe = open(client->client_pipename, O_WRONLY);
 
@@ -216,8 +209,21 @@ int handle_tfs_register(client_t *client) {
         printf("The session number %d was created with success.\n", session_id);
         clients[session_id].client_pipe = client_pipe;
     }
+
    
     return 0;
+}
+
+box_t* get_box(char *box_name) {
+    safe_mutex_lock(&boxes_lock);
+    for (int i = 0; i < num_boxes; ++i) {
+        if (strcmp(boxes[i].box_name, box_name) == 0) {
+            safe_mutex_unlock(&boxes_lock);
+            return &boxes[i];
+        }
+    }
+    safe_mutex_unlock(&boxes_lock);
+    return NULL;
 }
 
 int free_client_session(int session_id) {
@@ -263,7 +269,7 @@ int parse (char op_code, int parser_fnc (client_t *)) {
         return -1;
     }
     client_t *client = &clients[session_id];
-    client->box.opcode = op_code;
+    client->opcode = op_code;
     int result = parser_fnc(client);
     if (result != 0) {
         printf("Failed to parse message\n");
@@ -281,7 +287,7 @@ int parse (char op_code, int parser_fnc (client_t *)) {
 
 int parse_client(client_t *client) {
     //read opcode to client from pipe
-    read_pipe(server_pipe, &client->box.opcode, sizeof(uint8_t));
+    read_pipe(server_pipe, &client->opcode, sizeof(uint8_t));
     //read client pipename to client from pipe
     read_pipe(server_pipe, &client->client_pipename, sizeof(char)* CLIENT_NAMED_PIPE_PATH_LENGTH);
     //make sure the strings are null terminated
@@ -293,18 +299,41 @@ int parse_client_and_box(client_t * client) {
     //read opcode to client and client pipename to client from pipe
     parse_client(client);
     //read box name to client from pipe
-    read_pipe(server_pipe, &client->box.box_name, sizeof(char)* BOX_NAME_LENGTH);
+    char box_name[BOX_NAME_LENGTH + 1];
+    read_pipe(server_pipe, box_name, sizeof(char)* BOX_NAME_LENGTH);
 
     //make sure the strings are null terminated
-    client->box.box_name[BOX_NAME_LENGTH] = '\0';
+    box_name[BOX_NAME_LENGTH] = '\0';
+
+    if((client->box = get_box(box_name)) == NULL) {
+        printf("Box %s does not exist\n", box_name);
+        return -1;
+    }
     return 0;
 }
 int parse_list (client_t *client) {
     //read opcode to client from pipe
-    read_pipe(server_pipe, &client->box.opcode, sizeof(uint8_t));
+    read_pipe(server_pipe, &client->opcode, sizeof(uint8_t));
     //read client pipename to client from pipe
     read_pipe(server_pipe, &client->client_pipename, sizeof(char)* CLIENT_NAMED_PIPE_PATH_LENGTH);
 
+}
+
+
+
+int handle_tfs_remove_box(client_t *client) {
+    //TO DO: remove box
+    for(int i = 0; i < num_boxes; i++) {
+        if(strcmp(boxes[i].box_name, client->box.box_name) == 0) {
+            for(int j = i; j < num_boxes; j++) {
+                boxes[j] = boxes[j+1];
+            }
+            num_boxes--;
+            break;
+        }
+    }
+    //TO DO: send answer to client (manager)
+    return 0;
 }
 
 int handle_list_response (client_t client) {

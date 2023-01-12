@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
     char* register_pipe = argv[1];
     char* pipe_name = argv[2];
    
-    char* buffer = parse_mesage(OP_CODE_REGIST_SUB, pipe_name, argv[3]);
+    char* buffer = parse_message(OP_CODE_REGIST_SUB, pipe_name, argv[3]);
     int register_pipe_fd = open(register_pipe, O_WRONLY);
     if (register_pipe_fd < 0) {
         fprintf(stderr, "Failed to open register pipe %s\n", register_pipe);

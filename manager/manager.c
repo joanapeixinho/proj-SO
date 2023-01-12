@@ -33,9 +33,9 @@ int main(int argc, char **argv) {
         char error_message[MESSAGE_LENGTH + 1];
 
         if (strcmp(command, "create") == 0) {
-            buffer = parse_mesage(OP_CODE_CREATE_BOX_ANSWER, pipe_name, box_name);
+            buffer = parse_message(OP_CODE_CREATE_BOX_ANSWER, pipe_name, box_name);
         } else {
-            buffer = parse_mesage(OP_CODE_REMOVE_BOX, pipe_name, box_name);
+            buffer = parse_message(OP_CODE_REMOVE_BOX, pipe_name, box_name);
         }
         write_pipe(register_pipe_name, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
         
@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
             print_usage();
             return -1;
         }
-        buffer = parse_mesage(OP_CODE_LIST_BOXES, pipe_name, NULL);
+        buffer = parse_message(OP_CODE_LIST_BOXES, pipe_name, NULL);
         write_pipe(register_pipe_name, buffer, sizeof(uint8_t) + CLIENT_NAMED_PIPE_PATH_LENGTH*sizeof(char));
     } else {
         print_usage();

@@ -20,7 +20,7 @@ ssize_t try_write(int fd, const void *buf, size_t count) {
     return bytes_written;
 }
 
-char * parse_mesage(u_int8_t opcode, char * pipename, char * box_name ) {
+char * parse_message(u_int8_t opcode, char * pipename, char * box_name ) {
     
     char buffer [CLIENT_NAMED_PIPE_PATH_LENGTH  + BOX_NAME_LENGTH + 1] = {0};
     char * tmp = buffer;
