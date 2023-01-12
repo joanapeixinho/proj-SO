@@ -1,18 +1,17 @@
-#include "logging.h"
 #include "mbroker.h"
-#include <fcntl.h>
-#include <stdbool.h>
-#include <errno.h>
-#include <common/common.h>
+
+
+
 
 static int max_sessions;
 static int num_boxes;
+static int max_boxes;
 static int server_pipe;
 static char *pipename;
 
 
 static client_t *clients;
-static box_t *boxes;
+static node_t *boxes;
 static pthread_mutex_t boxes_lock;
 
 static bool *free_clients;
@@ -216,14 +215,16 @@ int handle_tfs_register(client_t *client) {
 
 box_t* get_box(char *box_name) {
     safe_mutex_lock(&boxes_lock);
-    for (int i = 0; i < num_boxes; ++i) {
-        if (strcmp(boxes[i].box_name, box_name) == 0) {
-            safe_mutex_unlock(&boxes_lock);
-            return &boxes[i];
-        }
-    }
+    //get box from linkedlist using get_data_by_value
+    box_t *box = (box_t *)get_data_by_value(boxes, box_name, compare_box_names);
+    //return box
     safe_mutex_unlock(&boxes_lock);
-    return NULL;
+    return box;
+}
+
+int compare_box_names(node_t * node, char *box_name) {
+    box_t *box = (box_t *)node->data;
+    return strcmp(box->box_name, box_name);
 }
 
 int free_client_session(int session_id) {
@@ -369,6 +370,7 @@ int handle_list_response (client_t client) {
 
 
 int handle_tfs_create_box(client_t *client) {
-
+    
+    
     
 }
