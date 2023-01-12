@@ -17,10 +17,10 @@ typedef struct {
     uint8_t opcode; 
     char box_name[BOX_NAME_LENGTH + 1]; 
     int fhandle; //file handle for the box
-    size_t len; //total length of the messages in the box
+    uint64_t box_size; //total length of the messages in the box
     char *buffer; //buffer to store the message
-    int n_publishers; //0 or 1 max
-    int n_subscribers; 
+    uint64_t n_publishers; //0 or 1 max
+    uint64_t n_subscribers; 
 } box_t;
 
 /* client_t is the structure that is used to store the information about the

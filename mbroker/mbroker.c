@@ -6,10 +6,14 @@
 #include <common/common.h>
 
 static int max_sessions;
+static int num_boxes;
 static int server_pipe;
 static char *pipename;
 
+
 static client_t *clients;
+static box_t *boxes;
+
 static bool *free_clients;
 static pthread_mutex_t free_clients_lock;
 
@@ -77,7 +81,6 @@ int main(int argc, char **argv) {
         bytes_read = read(server_pipe, &op_code, sizeof(char));
 
         while (bytes_read > 0) {
-
             switch (op_code) {
                 case OP_CODE_REGIST_PUB:
                     parser(op_code, parse_box);
@@ -88,17 +91,11 @@ int main(int argc, char **argv) {
                 case OP_CODE_CREATE_BOX:
                     parser(op_code, parse_box);
                     break;
-                case OP_CODE_CREATE_BOX_ANSWER:
-                    break;
                 case OP_CODE_REMOVE_BOX:
                     parser(op_code, parse_box);
                     break;
-                case OP_CODE_REMOVE_BOX_ANSWER:
-                    break;
                 case OP_CODE_LIST_BOXES:
                     parser(op_code, parse_list);
-                    break;
-                case OP_CODE_LIST_BOXES_ANSWER:
                     break;
                 default:
                     printf("Invalid operation code %c\n", op_code);
@@ -119,7 +116,7 @@ int main(int argc, char **argv) {
     return -1;
 }
 
-int init_mbroker() {
+int mbroker_init() {
     clients = malloc(max_sessions * sizeof(client_t));
     free_clients = malloc(max_sessions * sizeof(bool));
 
@@ -258,7 +255,7 @@ void close_server(int exit_code) {
     exit(exit_code);
 }
 
-parse (char op_code, int parser_fnc (client_t *)) {
+int parse (char op_code, int parser_fnc (client_t *)) {
     int session_id = get_free_client_session();
     if (session_id == -1) {
         printf("No free sessions\n");
@@ -281,7 +278,7 @@ parse (char op_code, int parser_fnc (client_t *)) {
     return 0;
 }
 
-parse_box(client_t * client) {
+int parse_box(client_t * client) {
     
     //read opcode to client from pipe
     read_pipe(server_pipe, &client->box.opcode, sizeof(uint8_t));
@@ -296,10 +293,34 @@ parse_box(client_t * client) {
     return 0;
 }
 
-parse_list (client_t *client) {
+int parse_list (client_t *client) {
     //read opcode to client from pipe
     read_pipe(server_pipe, &client->box.opcode, sizeof(uint8_t));
     //read client pipename to client from pipe
     read_pipe(server_pipe, &client->client_pipename, sizeof(char)* CLIENT_NAMED_PIPE_PATH_LENGTH);
 
+}
+
+int handle_list_response (client_t client) {
+    //open client pipe
+    int client_pipe = open(client.client_pipename, O_WRONLY);
+    if (client_pipe < 0) {
+        perror("Failed to open pipe");
+        return -1;
+    }
+    char *buffer;
+
+    for (int i=0; i<num_boxes; i++) {
+
+    }
+
+    return 0;
+}
+
+int handle_tfs_create_box(client_t *client) {
+   //TO DO: create box
+~   //TO DO: send answer to client
+
+
+    boxes[num_boxes] = client->box;
 }

@@ -67,3 +67,32 @@ int main(int argc, char **argv) {
 
     return -1;
 }
+
+void list_boxes (char* pipe_name) {
+        
+        uint8_t op_code;
+        uint8_t last;
+        uint64_t box_size;
+        uint64_t n_pubs;
+        uint64_t n_subs;
+        char box_name[BOX_NAME_LENGTH + 1];
+        int count = 0;
+
+        while (last == 0) {
+            read_pipe(pipe_name, &op_code, sizeof(uint8_t));
+            read_pipe(pipe_name,&last, sizeof(uint8_t));
+            if (count == 0 && last == 1 ) {
+                fprintf(stdout, "NO BOXES FOUND\n");
+                return;
+            } 
+            read_pipe(pipe_name, box_name, BOX_NAME_LENGTH*sizeof(char));
+            box_name[BOX_NAME_LENGTH] = '\0';
+            read_pipe(pipe_name, &box_size, sizeof(uint64_t));
+            read_pipe(pipe_name, &n_pubs, sizeof(uint64_t));
+            read_pipe(pipe_name, &n_subs, sizeof(uint64_t));
+            fprintf(stdout, "%s %zu %zu %zu\n", box_name, box_size, n_pubs, n_subs);
+            count++;
+        }
+        
+        return;
+}

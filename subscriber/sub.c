@@ -13,10 +13,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Usage: sub <register_pipe> <pipe_name> <box_name>\n");
         return -1;
     }
-
     
-    
-
     char* register_pipe = argv[1];
     char* pipe_name = argv[2];
    
@@ -71,7 +68,7 @@ void sigint_handler(int sig) {
     fprintf(stdout, "Received SIGINT. Closing pipe and exiting...\n");
     //close session
     safe_close(pipe_fd);
-    fprintf(stdout, "Received %d messages\n", message_count);
+    write(stdout, "Received %d messages\n", message_count);
     exit(0);
     }
     else {
