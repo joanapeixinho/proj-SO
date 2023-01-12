@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
             return 0;
         }
 
-        write_pipe(pipe_fd, message, sizeof(uint8_t) + MESSAGE_LENGTH*sizeof(char)); 
+        try_write(pipe_fd, message, sizeof(uint8_t) + MESSAGE_LENGTH*sizeof(char)); 
     }
     return -1;
 }

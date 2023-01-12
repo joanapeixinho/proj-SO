@@ -83,12 +83,13 @@ int main(int argc, char **argv) {
         while (bytes_read > 0) {
             switch (op_code) {
                 case OP_CODE_REGIST_PUB:
-                    parser(op_code, parse_box);
+                    parser(op_code, parse_client_and_box);
                     break;
                 case OP_CODE_REGIST_SUB:
-                    parser(op_code, parse_box);
+                    parser(op_code, parse_client_and_box);
                     break;
                 case OP_CODE_CREATE_BOX:
+<<<<<<< HEAD
                     parser(op_code, parse_box);
                     break;
                 case OP_CODE_REMOVE_BOX:
@@ -96,6 +97,15 @@ int main(int argc, char **argv) {
                     break;
                 case OP_CODE_LIST_BOXES:
                     parser(op_code, parse_list);
+=======
+                    parser(op_code, parse_client_and_box);
+                    break;
+                case OP_CODE_REMOVE_BOX:
+                    parser(op_code, parse_client_and_box);
+                    break;
+                case OP_CODE_LIST_BOXES:
+                    parser(op_code, parse_client);
+>>>>>>> ba6ab30cedb098e72e51ea6ef6c816439ceeeeea
                     break;
                 default:
                     printf("Invalid operation code %c\n", op_code);
@@ -278,18 +288,30 @@ int parse (char op_code, int parser_fnc (client_t *)) {
     return 0;
 }
 
+<<<<<<< HEAD
 int parse_box(client_t * client) {
     
+=======
+
+parse_client(client_t *client) {
+>>>>>>> ba6ab30cedb098e72e51ea6ef6c816439ceeeeea
     //read opcode to client from pipe
     read_pipe(server_pipe, &client->box.opcode, sizeof(uint8_t));
     //read client pipename to client from pipe
     read_pipe(server_pipe, &client->client_pipename, sizeof(char)* CLIENT_NAMED_PIPE_PATH_LENGTH);
+    //make sure the strings are null terminated
+    client->client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH] = '\0';
+
+}
+
+parse_client_and_box(client_t * client) {
+    //read opcode to client and client pipename to client from pipe
+    parse_client(client);
     //read box name to client from pipe
     read_pipe(server_pipe, &client->box.box_name, sizeof(char)* BOX_NAME_LENGTH);
 
     //make sure the strings are null terminated
-    client->client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH - 1] = '\0';
-    client->box.box_name[BOX_NAME_LENGTH - 1] = '\0';
+    client->box.box_name[BOX_NAME_LENGTH] = '\0';
     return 0;
 }
 
