@@ -193,24 +193,27 @@ void *client_session(void *client_in_array) {
 
 
 int handle_tfs_register(client_t *client) {
-
-    int session_id = get_free_client_session();
-
-    int client_pipe = open(client->client_pipename, O_WRONLY);
+    //Open client pipe
+    int client_pipe;
+    if(client->opcode == OP_CODE_REGIST_PUB ){ // publisher
+        client_pipe = open(client->client_pipename, O_RDONLY);
+    } else { // subscriber
+        client_pipe = open(client->client_pipename, O_WRONLY);
+    }
 
     if (client_pipe < 0) {
         perror("Failed to open pipe");
         return -1;
     }
+    client->client_pipe = client_pipe;
 
-    if (session_id < 0) {
-        printf("The maximum number of sessions was exceeded.\n");
-    } else {
-        printf("The session number %d was created with success.\n", session_id);
-        clients[session_id].client_pipe = client_pipe;
+    //Check if the box already has a publisher
+    if(client->opcode == OP_CODE_REGIST_PUB && client->box->n_publishers == 1){
+        printf("Box %s already has a publisher\n", client->box->box_name);
+        safe_close(client_pipe);
+        return -1;
     }
 
-   
     return 0;
 }
 
@@ -268,6 +271,8 @@ int parse (char op_code, int parser_fnc (client_t *)) {
         printf("No free sessions\n");
         return -1;
     }
+    printf("The session number %d was created with success.\n", session_id);
+
     client_t *client = &clients[session_id];
     client->opcode = op_code;
     int result = parser_fnc(client);
@@ -305,14 +310,15 @@ int parse_client_and_box(client_t * client) {
     //make sure the strings are null terminated
     box_name[BOX_NAME_LENGTH] = '\0';
 
-    if((client->box = get_box(box_name)) == NULL) {
+    if(client->opcode == 3){ //If you need to create this box
+        box_t *tmp_box = (box_t *) malloc(sizeof(box_t)); //Temporary box used to store a box name
+        strcpy(tmp_box->box_name, box_name);
+        client->box = tmp_box;
+    } else if((client->box = get_box(box_name)) == NULL) { //If you need to register to this box
         printf("Box %s does not exist\n", box_name);
         return -1;
     }
-    if(client->opcode == 1 && client->box->n_publishers == 1){
-        printf("Box %s already has a publisher\n", box_name);
-        return -1;
-    }
+    
     return 0;
 }
 int parse_list (client_t *client) {
