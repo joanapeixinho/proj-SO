@@ -89,15 +89,6 @@ int main(int argc, char **argv) {
                     parser(op_code, parse_client_and_box);
                     break;
                 case OP_CODE_CREATE_BOX:
-<<<<<<< HEAD
-                    parser(op_code, parse_box);
-                    break;
-                case OP_CODE_REMOVE_BOX:
-                    parser(op_code, parse_box);
-                    break;
-                case OP_CODE_LIST_BOXES:
-                    parser(op_code, parse_list);
-=======
                     parser(op_code, parse_client_and_box);
                     break;
                 case OP_CODE_REMOVE_BOX:
@@ -105,7 +96,6 @@ int main(int argc, char **argv) {
                     break;
                 case OP_CODE_LIST_BOXES:
                     parser(op_code, parse_client);
->>>>>>> ba6ab30cedb098e72e51ea6ef6c816439ceeeeea
                     break;
                 default:
                     printf("Invalid operation code %c\n", op_code);
