@@ -309,6 +309,10 @@ int parse_client_and_box(client_t * client) {
         printf("Box %s does not exist\n", box_name);
         return -1;
     }
+    if(client->opcode == 1 && client->box->n_publishers == 1){
+        printf("Box %s already has a publisher\n", box_name);
+        return -1;
+    }
     return 0;
 }
 int parse_list (client_t *client) {
