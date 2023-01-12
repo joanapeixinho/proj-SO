@@ -5,7 +5,7 @@
 
 
 
-// Insert a new node at the front of the list
+
 void push(node_t* head, void* data) {
     struct node* new_node = (struct node*) malloc(sizeof(struct node));
     new_node->data = data;
@@ -45,3 +45,14 @@ void remove_by_value(node_t* head, void* data, int (*compare)(void*, void*)) {
     }
 }
 
+
+int contains(node_t* head, void* data, int (*compare)(void*, void*)) {
+    struct node* temp = head;
+    while (temp != NULL) {
+        if ((*compare)(temp->data, data) == 0) {
+            return 1;  // Found
+        }
+        temp = temp->next;
+    }
+    return 0;
+}
