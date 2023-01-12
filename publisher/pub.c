@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
     size_t len = MESSAGE_LENGTH; 
 
     //Read from stdin until reaches EOF
-    
+    ssize_t bytes_written;
     while(true){
         //Each line from stdin is a message_text
         memset(message_text,0,MESSAGE_LENGTH*sizeof(char)); //Clear the message text
@@ -57,7 +57,13 @@ int main(int argc, char **argv) {
             return 0;
         }
 
-        try_write(pipe_fd, message, sizeof(uint8_t) + MESSAGE_LENGTH*sizeof(char)); 
+        bytes_written =  try_write(pipe_fd, message, sizeof(uint8_t) + MESSAGE_LENGTH*sizeof(char));
+        if(bytes_written < 0){ //An error occurred during writing
+            return -1;
+        } else if (bytes_written == 0){ //The pipe is closed
+            printf("The pipe is closed. Exiting ...\n");
+            return 0;
+        }
     }
     return -1;
 }
