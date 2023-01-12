@@ -65,9 +65,13 @@ int main(int argc, char **argv) {
 
 void sigint_handler(int sig) {
     if (sig == SIGINT) {
-    fprintf(stdout, "Received SIGINT. Closing pipe and exiting...\n");
+    char *error_message = "Received SIGINT. Closing pipe and exiting...\n";
+    fflush(stdout);
+    write(1, error_message, strlen(error_message));
     //close session
     safe_close(pipe_fd);
+    
+    
     write(stdout, "Received %d messages\n", message_count);
     exit(0);
     }
