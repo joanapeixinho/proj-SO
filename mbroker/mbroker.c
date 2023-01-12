@@ -151,27 +151,38 @@ void *client_session(void *client_in_array) {
 
         int result = 0;
 
-       switch (op_code) {
-                case OP_CODE_REGIST_PUB:
-                    parser(op_code, parse_client_and_box);
-                    break;
-                case OP_CODE_REGIST_SUB:
-                    parser(op_code, parse_client_and_box);
-                    break;
-                case OP_CODE_CREATE_BOX:
-                    parser(op_code, parse_client_and_box);
-                    break;
-                case OP_CODE_REMOVE_BOX:
-                    parser(op_code, parse_client_and_box);
-                    break;
-                case OP_CODE_LIST_BOXES:
-                    parser(op_code, parse_client);
-                    break;
-                default:
-                    printf("Invalid operation code %c\n", op_code);
-                    close_server(EXIT_FAILURE);
-                    return -1;
-            }
+        switch (client->box.opcode) { // TODO: implement handle functions
+
+        case OP_CODE_REGIST_PUB:
+            result = handle_tfs_register(client);
+            break;
+        case OP_CODE_REGIST_SUB:
+            result = handle_tfs_register(client);
+            break;
+        case OP_CODE_CREATE_BOX:
+            result = handle_tfs_create_box(client);
+            break;
+        case OP_CODE_CREATE_BOX_ANSWER:
+            result = handle_tfs_create_box_answer(client);
+            break;
+        case OP_CODE_REMOVE_BOX:
+            result = handle_tfs_remove_box(client);
+            break;
+        case OP_CODE_REMOVE_BOX_ANSWER:
+            result = handle_tfs_remove_box_answer(client);
+            break;
+        case OP_CODE_LIST_BOXES:
+            result = handle_tfs_list_boxes(client);
+            break;
+        case OP_CODE_LIST_BOXES_ANSWER:
+            result = handle_tfs_list_boxes_answer(client);
+            break;
+        case OP_CODE_PUBLISHER:
+            result = handle_tfs_write_box(client);
+            break;
+        default:
+            break;
+        }
 
         if (result != 0) {
             /* if there is an error during the handling of the message, discard
@@ -186,6 +197,7 @@ void *client_session(void *client_in_array) {
         safe_mutex_unlock(&client->lock);
     }
 }
+
 
 int handle_tfs_register(client_t *client) {
 
