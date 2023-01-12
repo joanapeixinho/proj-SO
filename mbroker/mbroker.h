@@ -2,12 +2,15 @@
 #define MBROKER_H
 
 #include "common/common.h"
+#include "common/linkedlist.h"
 #include "config.h"
 #include <pthread.h>
 #include <stdbool.h>
 #include <sys/types.h>
 #include <stdint.h>
-
+#include <fcntl.h>
+#include "logging.h"
+#include <errno.h>
 
 
 /* box_t is the structure that is used to communicate between the broker and the
