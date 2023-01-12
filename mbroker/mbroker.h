@@ -67,4 +67,8 @@ int parser(char op_code, int parser_fnc(client_t *client));
 int parse_box(client_t *client);
 int parse_list(client_t *client);
 
+// box functions
+int create_box(char *box_name);
+
+
 #endif

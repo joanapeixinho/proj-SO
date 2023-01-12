@@ -385,50 +385,51 @@ int handle_list_response (client_t client) {
     return 0;
 }
 
-int box_name_already_exists(box_t * box) {
-    safe_mutex_lock(&boxes_lock);
    
-    int result = contains(&boxes, box, compare_box_names);
-   
-    safe_mutex_unlock(&boxes_lock);
-    return result;
-}
 
 
 int handle_tfs_create_box(client_t *client) {
     
     safe_mutex_lock(&boxes_lock);
 
-    if (box_name_already_exists(client->box)) {
+    if (contains(&boxes,client->box, compare_box_names)) {
         printf("Box %s already exists\n", client->box->box_name);
         safe_mutex_unlock(&boxes_lock);
         return -1;
     }
 
-    int fhandle = tfs_create_box(client->box->box_name);
-
-    if (fhandle < 0) {
-        perror("Failed to create box\n");
+    if (create_box(client->box->box_name) < 0) {
         safe_mutex_unlock(&boxes_lock);
+        return -1;
+    }
+    
+    safe_mutex_unlock(&boxes_lock);
+
+    return 0;
+    
+}
+
+int create_box(char * box_name) {
+    
+    int fhandle = tfs_open(box_name, TFS_O_CREAT);
+    
+    if (fhandle < 0) {
+        perror("Failed to create box in tfs\n");
         return -1;
     }
 
     tfs_close(fhandle);
     
-    
     box_t *tmp_box = (box_t *) malloc(sizeof(box_t));
-    strcpy(tmp_box->box_name, client->box->box_name);
+
     tmp_box->fhandle = fhandle;
     tmp_box->box_size = 0;
     tmp_box->n_publishers = 0;
     tmp_box->n_subscribers = 0;
 
     push(&boxes, tmp_box);
-    
-    safe_mutex_unlock(&boxes_lock);
 
     return 0;
-    
 }
 
 int handle_messages_from_publisher(client_t *client){
