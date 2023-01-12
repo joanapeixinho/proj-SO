@@ -65,19 +65,38 @@ int main(int argc, char **argv) {
 
 void sigint_handler(int sig) {
     if (sig == SIGINT) {
-    char *error_message = "Received SIGINT. Closing pipe and exiting...\n";
+
     fflush(stdout);
-    write(1, error_message, strlen(error_message));
+    
+    char *error_message = "Received SIGINT. Closing pipe and exiting...\n";
+    write(1, error_message, strlen(error_message) + 1);
+    
     //close session
     safe_close(pipe_fd);
+    //print number of messages received
+    char *final_message = "Received ";
+    final_message = concat(final_message, int_to_string(message_count));
+    final_message = concat(final_message, " messages\n");
+    write(1, final_message, strlen(final_message) + 1);
+
+    //restore default handler
+    signal(sig, SIG_DFL);
+    raise(sig);
     
-    
-    write(stdout, "Received %d messages\n", message_count);
-    exit(0);
     }
     else {
-        fprintf(stderr, "Received unexpected signal %d\n", sig);
-        exit(-1);
+
+        fflush(stderr);
+        char* error_message = "Received unexpected signal ";
+        error_message = concat(error_message, int_to_string(sig));
+        
+        //write error message to stderr
+        write(2, error_message, strlen(error_message) + 1);
+        safe_close(pipe_fd);
+
+        //restore default handler
+        signal(sig, SIG_DFL);
+        raise(sig);
     }
 }
 

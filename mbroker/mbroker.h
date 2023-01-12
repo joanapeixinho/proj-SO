@@ -19,7 +19,8 @@ typedef struct {
     uint64_t box_size; //total length of the messages in the box
     char *buffer; //buffer to store the message
     uint64_t n_publishers; //0 or 1 max
-    uint64_t n_subscribers; 
+    uint64_t n_subscribers;
+
 } box_t;
 
 /* client_t is the structure that is used to store the information about the
