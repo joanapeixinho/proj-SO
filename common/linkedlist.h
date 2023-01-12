@@ -9,6 +9,6 @@ typedef struct node {
 
 void push(node_t* head,void* data);
 void remove_by_value(node_t* head,void* data, int (*compare)(void*, void*));
-struct node* get_data_by_value(node_t* head,void* data, int (*compare)(void*, void*));
+void* get_data_by_value(node_t* head,void* data, int (*compare)(void*, void*));
 
 #endif
