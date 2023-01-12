@@ -88,17 +88,11 @@ int main(int argc, char **argv) {
                 case OP_CODE_CREATE_BOX:
                     parser(op_code, parse_client_and_box);
                     break;
-                case OP_CODE_CREATE_BOX_ANSWER:
-                    break;
                 case OP_CODE_REMOVE_BOX:
                     parser(op_code, parse_client_and_box);
                     break;
-                case OP_CODE_REMOVE_BOX_ANSWER:
-                    break;
                 case OP_CODE_LIST_BOXES:
                     parser(op_code, parse_client);
-                    break;
-                case OP_CODE_LIST_BOXES_ANSWER:
                     break;
                 default:
                     printf("Invalid operation code %c\n", op_code);
