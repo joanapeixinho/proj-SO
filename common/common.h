@@ -45,6 +45,7 @@ ssize_t try_read(int fd, void *buf, size_t count);
  */
 ssize_t try_write(int fd, const void *buf, size_t count);
 
+
 /* check if all the content was read from the pipe. */
 #define read_pipe(pipe, buffer, size)                                          
     if (try_read(pipe, buffer, size) != size) { 
@@ -76,6 +77,10 @@ ssize_t try_write(int fd, const void *buf, size_t count);
         printf("Failed to unlock mutex %p", mutex);
         return -1;                                                             
     }
+
+
+
+
 
 char * parse_message(u_int8_t opcode, char * pipename, char * box_name );
 

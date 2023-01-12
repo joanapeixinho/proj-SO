@@ -314,19 +314,32 @@ int handle_list_response (client_t client) {
         perror("Failed to open pipe");
         return -1;
     }
-    char *buffer;
-
-    for (int i=0; i<num_boxes; i++) {
-
+    
+    char buffer[sizeof(uint8_t) * 2 + BOX_NAME_LENGTH + sizeof(uint64_t) * 3]; 
+    uint8_t last = 0;
+    int i;
+    for (i=0; i<num_boxes; i++) {
+        memcpy(buffer, &client.box.opcode, sizeof(uint8_t));
+        if (i == num_boxes - 1) {
+            last = 1;
+        }
+        memcpy(buffer + sizeof(uint8_t),&last, sizeof(u_int8_t));
+        memcpy(buffer + sizeof(uint8_t)*2, &boxes[i].box_name, sizeof(char)*BOX_NAME_LENGTH);
+        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH, &boxes[i].box_size, sizeof(uint64_t));
+        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t), &boxes[i].n_publishers, sizeof(uint64_t));
+        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t)*2, &boxes[i].n_subscribers, sizeof(uint64_t));
+        write_pipe(client_pipe, buffer, sizeof(uint8_t) * 2 + BOX_NAME_LENGTH + sizeof(uint64_t) * 3);
+        free(buffer);
     }
+    //close client pipe
+    safe_close(client_pipe);
 
     return 0;
 }
 
+
+
 int handle_tfs_create_box(client_t *client) {
-   //TO DO: create box
-~   //TO DO: send answer to client
 
-
-    boxes[num_boxes] = client->box;
+    
 }
