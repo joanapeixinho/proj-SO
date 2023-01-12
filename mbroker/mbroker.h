@@ -3,6 +3,7 @@
 
 #include "common/common.h"
 #include "common/linkedlist.h"
+#include "fs/operations.h"
 #include "config.h"
 #include <pthread.h>
 #include <stdbool.h>
