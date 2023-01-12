@@ -425,7 +425,7 @@ int handle_messages_from_publisher(client_t *client){
         }
         read_pipe(client->client_pipe, &message, MESSAGE_LENGTH);
 
-        //Write message with one '\0' at the end to box
+        //Write message with '\0' at the end to box
         bytes_written = tfs_write(client->box->fhandle, message, strlen(message) + 1);
         if(bytes_written < 0){
             printf("Failed to write to box %s in tfs\n", client->box->box_name);
