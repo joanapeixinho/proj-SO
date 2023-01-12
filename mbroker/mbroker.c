@@ -323,17 +323,14 @@ int parse_list (client_t *client) {
 
 
 int handle_tfs_remove_box(client_t *client) {
-    //TO DO: remove box
-    for(int i = 0; i < num_boxes; i++) {
-        if(strcmp(boxes[i].box_name, client->box->box_name) == 0) {
-            for(int j = i; j < num_boxes; j++) {
-                boxes[j] = boxes[j+1];
-            }
-            num_boxes--;
-            break;
-        }
-    }
-    //TO DO: send answer to client (manager)
+    //remove box from linkedlist using remove_by_value
+    safe_mutex_lock(&boxes_lock);
+    remove_by_value(&boxes, client->box, compare_box_names);
+
+    //free box
+    free(client->box);
+    safe_mutex_unlock(&boxes_lock);
+
     return 0;
 }
 
@@ -371,6 +368,6 @@ int handle_list_response (client_t client) {
 
 int handle_tfs_create_box(client_t *client) {
     
-    
+ 
     
 }
