@@ -288,13 +288,8 @@ int parse (char op_code, int parser_fnc (client_t *)) {
     return 0;
 }
 
-<<<<<<< HEAD
-int parse_box(client_t * client) {
-    
-=======
 
 parse_client(client_t *client) {
->>>>>>> ba6ab30cedb098e72e51ea6ef6c816439ceeeeea
     //read opcode to client from pipe
     read_pipe(server_pipe, &client->box.opcode, sizeof(uint8_t));
     //read client pipename to client from pipe
