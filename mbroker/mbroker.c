@@ -354,19 +354,24 @@ int handle_list_response (client_t client) {
     
     char buffer[sizeof(uint8_t) * 2 + BOX_NAME_LENGTH + sizeof(uint64_t) * 3]; 
     uint8_t last = 0;
-    int i;
-    for (i=0; i<num_boxes; i++) {
+    
+    while (boxes != NULL) {
+        box_t *box = boxes->data;
         memcpy(buffer, &client.opcode, sizeof(uint8_t));
-        if (i == num_boxes - 1) {
+        
+        if (boxes->next == NULL) {
             last = 1;
         }
+
         memcpy(buffer + sizeof(uint8_t),&last, sizeof(u_int8_t));
-        memcpy(buffer + sizeof(uint8_t)*2, &boxes[i].box_name, sizeof(char)*BOX_NAME_LENGTH);
-        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH, &boxes[i].box_size, sizeof(uint64_t));
-        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t), &boxes[i].n_publishers, sizeof(uint64_t));
-        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t)*2, &boxes[i].n_subscribers, sizeof(uint64_t));
+        memcpy(buffer + sizeof(uint8_t)*2, &box->box_name, sizeof(char)*BOX_NAME_LENGTH);
+        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH, &box->box_size, sizeof(uint64_t));
+        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t), &box->n_publishers, sizeof(uint64_t));
+        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t)*2, &box->n_subscribers, sizeof(uint64_t));
         write_pipe(client_pipe, buffer, sizeof(uint8_t) * 2 + BOX_NAME_LENGTH + sizeof(uint64_t) * 3);
+        
         free(buffer);
+        boxes = boxes->next;
     }
     //close client pipe
     safe_close(client_pipe);
@@ -377,7 +382,21 @@ int handle_list_response (client_t client) {
 
 
 int handle_tfs_create_box(client_t *client) {
+    //add box to linkedlist using add_to_list
+    safe_mutex_lock(&boxes_lock);
+
+    box_t *tmp_box = (box_t *) malloc(sizeof(box_t));
+    strcpy(tmp_box->box_name, client->box->box_name);
     
+    tmp_box->box_size = 0;
+    tmp_box->n_publishers = 0;
+    tmp_box->n_subscribers = 0;
+
+    push(&boxes, tmp_box);
+    
+    safe_mutex_unlock(&boxes_lock);
+
+    return 0;
  
     
 }
