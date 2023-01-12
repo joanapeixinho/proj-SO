@@ -207,10 +207,16 @@ int handle_tfs_register(client_t *client) {
     client->client_pipe = client_pipe;
 
     //Check if the box already has a publisher
-    if(client->opcode == OP_CODE_REGIST_PUB && client->box->n_publishers == 1){
-        printf("Box %s already has a publisher\n", client->box->box_name);
-        safe_close(client_pipe);
-        return -1;
+    if(client->opcode == OP_CODE_REGIST_PUB){
+        if(client->box->n_publishers == 1){
+            printf("Box %s already has a publisher\n", client->box->box_name);
+            safe_close(client_pipe);
+            return -1;
+        }
+
+        return handle_messages_from_publisher(client);
+    } else{
+        //TODO: handle_messages_to_subscriber()
     }
 
     return 0;
@@ -383,4 +389,36 @@ int handle_tfs_create_box(client_t *client) {
     
     
     
+}
+
+int handle_messages_from_publisher(client_t *client){
+    uint8_t opcode;
+    char message[MESSAGE_LENGTH + 1];
+    message[MESSAGE_LENGTH] = '\0';
+    ssize_t bytes_read;
+    ssize_t bytes_written;
+    while(true){
+        //Check if it returns EOF
+        bytes_read = try_read(client->client_pipe, &opcode, sizeof(uint8_t));
+        if(bytes_read ==0){ //EOF 
+            safe_close(client->client_pipe);
+            return 0;
+        } else if (bytes_read < 0){ //Error
+            printf("Failed to read from pipe %d\n", client->client_pipe);
+            return -1;
+        }
+        read_pipe(client->client_pipe, &message, MESSAGE_LENGTH);
+
+        //Write message with one '\0' at the end to box
+        bytes_written = tfs_write(client->box->fhandle, message, strlen(message) + 1);
+        if(bytes_written < 0){
+            printf("Failed to write to box %s in tfs\n", client->box->box_name);
+            return -1;
+        } else if(bytes_written < strlen(message) + 1){
+            printf("Box %s is full\n", client->box->box_name);
+            return -1;
+        }
+        client->box->box_size += bytes_written;
+
+    }
 }
