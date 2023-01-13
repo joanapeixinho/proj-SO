@@ -7,7 +7,7 @@
 #include "../mbroker/mbroker.h"
 
 int list_boxes(int pipefd);
-
+int compare_box_names(void *box, void *box_name);
 
 static void print_usage() {
     fprintf(stderr, "usage: \n"

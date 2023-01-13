@@ -10,7 +10,7 @@ int pcq_create(pc_queue_t *queue, size_t capacity){
     queue->pcq_tail = 0;
     
     //TODO: change (void *) to struct of registry
-    if(queue->pcq_buffer = malloc(capacity * sizeof(void*)) == NULL){
+    if(queue->pcq_buffer = (request_t**) malloc(capacity * sizeof(request_t)) == NULL){
         free(queue->pcq_buffer);
         return -1;
     }

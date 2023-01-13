@@ -2,6 +2,7 @@
 #define __PRODUCER_CONSUMER_H__
 
 #include <pthread.h>
+#include "../mbroker/mbroker.h"
 
 // IMPORTANT: do not change anything in this file
 //

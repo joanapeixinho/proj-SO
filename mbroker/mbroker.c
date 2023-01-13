@@ -8,7 +8,7 @@ static int num_boxes;
 static int server_pipe;
 static char *pipename;
 
-//static pc_queue_t pc_queue;
+static pc_queue_t pc_queue;
 
 static client_t *clients;
 static node_t *boxes;
@@ -303,7 +303,7 @@ void close_server(int exit_code) {
             exit(EXIT_FAILURE);
         }
     }
-    pcq_destroy(&queue);
+    pcq_destroy(&pc_queue);
     free(clients);
     free(free_clients);
     exit(exit_code);
@@ -364,9 +364,9 @@ int parser(uint8_t op_code, int parser_fnc (client_t *)) {
     safe_mutex_unlock(&client->lock);
     return 0;
 }
-*/
 
-int parse (char op_code) {
+
+int parser_new (uint8_t op_code) {
     
     request_t* request = (request_t*) malloc(sizeof(request_t));
     request->opcode = op_code;
@@ -377,7 +377,7 @@ int parse (char op_code) {
         request->box_name[BOX_NAME_LENGTH] = '\0';
     }
     
-    if(pcq_enqueue(&queue, &request) == -1){
+    if(pcq_enqueue(&pc_queue, &request) == -1){
         printf("Failed to enqueue request\n");
         return -1;
     }
