@@ -4,7 +4,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "../mbroker/mbroker.h"
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -12,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
+#include "betterassert.h"
 
 
 #define PIPE_BUFFER_MAX_LEN (PIPE_BUF)
@@ -78,15 +78,10 @@ char * parse_message(u_int8_t opcode, char * pipename, char * box_name );
     }
 
 #define safe_mutex_lock(mutex)\
-    if (pthread_mutex_lock(mutex) != 0) {\
-        printf("Failed to lock mutex %p", mutex);\
-        close_server(EXIT_FAILURE);\
-    }                                                                        
+    ALWAYS_ASSERT(pthread_mutex_lock(mutex) != 0, "Failed to lock mutex %p", mutex)
+                                                                
 
 #define safe_mutex_unlock(mutex)\
-    if (pthread_mutex_unlock(mutex) != 0) {\
-        printf("Failed to unlock mutex %p", mutex);\
-        close_server(EXIT_FAILURE);\
-    }
+    ALWAYS_ASSERT(pthread_mutex_unlock(mutex) != 0, "Failed to unlock mutex %p", mutex)
 
 #endif /* COMMON_H */

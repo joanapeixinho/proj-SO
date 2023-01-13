@@ -82,30 +82,8 @@ int main(int argc, char **argv) {
         bytes_read = read(server_pipe, &op_code, sizeof(char));
 
         while (bytes_read > 0) {
-            /*
-            switch (op_code) {
-                case OP_CODE_REGIST_PUB:
-                    parser(op_code, parse_client_and_box);
-                    break;
-                case OP_CODE_REGIST_SUB:
-                    parser(op_code, parse_client_and_box);
-                    break;
-                case OP_CODE_CREATE_BOX:
-                    parser(op_code, parse_client_and_box);
-                    break;
-                case OP_CODE_REMOVE_BOX:
-                    parser(op_code, parse_client_and_box);
-                    break;
-                case OP_CODE_LIST_BOXES:
-                    parser(op_code, parse_client);
-                    break;
-                default:
-                    printf("Invalid operation code %c\n", op_code);
-                    close_server(EXIT_FAILURE);
-                    return -1;
-            }
-            */
-            parser_new(op_code);
+            //Save request to queue
+            parser(op_code);
 
             bytes_read = read(server_pipe, &op_code, sizeof(char));
         }
@@ -200,27 +178,31 @@ int handle_tfs_register(client_t *client) {
     }
 
     if (client_pipe < 0) {
-        perror("Failed to open pipe");
+        printf("Failed to open pipe");
         return -1;
     }
     client->client_pipe = client_pipe;
 
+    //Try to get the box
+    box_t *box = get_box(client->box_name);
+    if(box == NULL){
+        printf("Box %s does not exist\n", client->box_name);
+        safe_close(client_pipe);
+        return -1;
+    }
+    client->box = box;
+
     //Check if the box already has a publisher
     if(client->opcode == OP_CODE_REGIST_PUB){
-        box_t *box = get_box(client->box_name);
-        if(box == NULL){
-            printf("Box %s does not exist\n", client->box_name);
-            safe_close(client_pipe);
-            return -1;
-        }
         if(box->n_publishers == 1){
             printf("Box %s already has a publisher\n", client->box_name);
             safe_close(client_pipe);
             return -1;
         }
-
+        client->box->n_publishers++;
         return handle_messages_from_publisher(client);
     } else {
+        client->box->n_subscribers++;
         return handle_messages_to_subscriber(client);
     }
     return 0;
