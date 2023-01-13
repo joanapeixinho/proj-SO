@@ -288,26 +288,7 @@ int free_client (int session_id) {
     return 0;
 }
 
-int parser(uint8_t op_code, int parser_fnc (client_t *)) {
-    int session_id = get_free_client_session();
-    if (session_id == -1) {
-        printf("No free sessions\n");
-        return -1;
-    }
-    printf("The session number %d was created with success.\n", session_id);
-
-    client_t *client = &clients[session_id];
-    client->opcode = op_code;
-    int result = parser_fnc(client);
-    if (result != 0) {
-        printf("Failed to parse message\n");
-        return -1;
-    }
-    return 0;
-}
-
-
-int parser_new (uint8_t op_code) {
+int parser(uint8_t op_code) {
     
     request_t* request = (request_t*) malloc(sizeof(request_t));
     request->opcode = op_code;
@@ -323,37 +304,6 @@ int parser_new (uint8_t op_code) {
         return -1;
     }
 
-    return 0;
-}
-
-
-int parse_client(client_t *client) {
-    //read opcode to client from pipe
-    read_pipe(server_pipe, &client->opcode, sizeof(uint8_t));
-    //read client pipename to client from pipe
-    read_pipe(server_pipe, &client->client_pipename, sizeof(char)* CLIENT_NAMED_PIPE_PATH_LENGTH);
-    //make sure the strings are null terminated
-    client->client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH] = '\0';
-    return 0;
-}
-
-int parse_client_and_box(client_t * client) {
-    //read opcode to client and client pipename to client from pipe
-    parse_client(client);
-    //read box name to client from pipe
-    char box_name[BOX_NAME_LENGTH + 1];
-    read_pipe(server_pipe, box_name, sizeof(char)* BOX_NAME_LENGTH);
-
-    //make sure the strings are null terminated
-    box_name[BOX_NAME_LENGTH] = '\0';
-
-    if(client->opcode == 3){ //If you need to create this box
-        strcpy(client->box_name, box_name);
-    } else if((client->box = get_box(box_name)) == NULL) { //If you need to register to this box
-        printf("Box %s does not exist\n", box_name);
-        return -1;
-    }
-    
     return 0;
 }
 
@@ -552,16 +502,20 @@ int handle_messages_to_subscriber(client_t *client){
     ssize_t bytes_read;
     ssize_t bytes_written;
     box_t* box = get_box(client->box_name);
-    safe_mutex_lock(&box->lock);
     int fhandle = tfs_open(box->box_name, TFS_O_APPEND);
 
     //Read each message from box and send to client
     //each message is terminated by '\0'
 
     while(true){
+        safe_mutex_lock(&box->lock);
+
+        //TODO: FIX NEW MESSAGE
         while (box->new_message == 0) {
+
             pthread_cond_wait(&box->cond, &box->lock);
         }
+        safe_mutex_unlock(&box->lock);
          
         memset(message, 0, MESSAGE_LENGTH);
         bytes_read = tfs_read(fhandle, message, MESSAGE_LENGTH);
@@ -578,10 +532,12 @@ int handle_messages_to_subscriber(client_t *client){
         if(bytes_written < 0){
             printf("Failed to write to pipe %d\n", client->client_pipe);
             tfs_close(fhandle);
+            safe_close(client->client_pipe);
             return -1;
         } else if(bytes_written < bytes_read){
             printf("Failed to write to pipe %d\n", client->client_pipe);
             tfs_close(fhandle);
+            safe_close(client->client_pipe);
             return -1;
         }
     }
