@@ -215,8 +215,8 @@ int handle_tfs_register(client_t *client) {
         }
 
         return handle_messages_from_publisher(client);
-    } else{
-        //TODO: handle_messages_to_subscriber()
+    } else {
+        handle_messages_to_subscriber(client);
     }
 
     return 0;
@@ -466,7 +466,8 @@ int handle_messages_from_publisher(client_t *client){
         read_pipe(client->client_pipe, &message, MESSAGE_LENGTH);
         box_t* box = get_box(client->box_name);
         //Write message with '\0' at the end to box
-        bytes_written = tfs_write(box->fhandle, message, strlen(message) + 1);
+        int fhandle = tfs_open(box->box_name, TFS_O_APPEND);
+        bytes_written = tfs_write(fhandle, message, strlen(message) + 1);
         if(bytes_written < 0){
             printf("Failed to write to box %s in tfs\n", box->box_name);
             return -1;

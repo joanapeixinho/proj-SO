@@ -129,6 +129,6 @@ int list_boxes (int pipefd) {
         return 0;
 }
 
-int compare_box_names(const box_t a, const box_t b) {
+int compare_box_names(const box_t box_a, const box_t box_b) {
     return strcmp(box_a->box_name, box_b->box_name);
 }

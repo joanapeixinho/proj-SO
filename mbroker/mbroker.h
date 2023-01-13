@@ -19,12 +19,11 @@
 
 typedef struct {
     char box_name[BOX_NAME_LENGTH + 1]; 
-    int fhandle; //file handle for the box
     uint64_t box_size; //total length of the messages in the box
-    char *buffer; //buffer to store the message
     uint64_t n_publishers; //0 or 1 max
     uint64_t n_subscribers;
-
+    pthread_cond_t cond; //condition variable to wake up the subscribers
+    pthread_mutex_t lock;
 } box_t;
 
 /* client_t is the structure that is used to store the information about the
@@ -34,11 +33,12 @@ typedef struct client {
     uint8_t opcode; 
     int session_id;
     char* box_name;
+    box_t *box;
     char client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH + 1];
     int client_pipe;
     bool to_do;
     pthread_t thread_id;
-    pthread_cond_t cond;
+    pthread_cond_t cond; //condition variable to wake up the client
     pthread_mutex_t lock;
 } client_t;
 
