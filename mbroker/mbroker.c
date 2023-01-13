@@ -152,7 +152,7 @@ void *client_session(void *client_in_array) {
 
         int result = 0;
 
-        switch (client->opcode) { // TODO: implement handle functions
+        switch (client->opcode) { 
 
         case OP_CODE_REGIST_PUB:
             result = handle_tfs_register(client);

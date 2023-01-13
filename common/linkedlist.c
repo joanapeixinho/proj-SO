@@ -3,9 +3,6 @@
 #include "linkedlist.h"
 
 
-
-
-
 void push(node_t* head, void* data) {
     struct node* new_node = (struct node*) malloc(sizeof(struct node));
     new_node->data = data;
@@ -23,7 +20,6 @@ void* get_data_by_value(node_t* head,void* data, int (*compare)(void*, void*)) {
     }
     return NULL;
 }
-
 
 void remove_by_value(node_t* head, void* data, int (*compare)(void*, void*)) {
     struct node* temp = head;
@@ -46,13 +42,4 @@ void remove_by_value(node_t* head, void* data, int (*compare)(void*, void*)) {
 }
 
 
-int contains(node_t* head, void* data, int (*compare)(void*, void*)) {
-    struct node* temp = head;
-    while (temp != NULL) {
-        if ((*compare)(temp->data, data) == 0) {
-            return 1;  // Found
-        }
-        temp = temp->next;
-    }
-    return 0;
-}
+
