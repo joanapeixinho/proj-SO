@@ -1,18 +1,14 @@
 #include "mbroker.h"
 
 
-<<<<<<< HEAD
-static int max_sessions;
-=======
 
 
 static unsigned long int max_sessions;
->>>>>>> 1e6cf45f304d41e82d57b94365f99f9a10d546a7
 static int num_boxes;
 static int server_pipe;
 static char *pipename;
 
-static pc_queue_t pc_queue;
+//static pc_queue_t pc_queue;
 
 static client_t *clients;
 static node_t *boxes;
