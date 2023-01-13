@@ -135,5 +135,5 @@ int list_boxes (int pipefd) {
 int compare_boxes(const void* box_a, const void* box_b) {
     box_t* a = (box_t*) box_a;
     box_t* b = (box_t*) box_b;
-    return strcmp(a->box_name, b->box_name);
+    return strcasecmp(a->box_name, b->box_name);
 }

@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h>
 
 
 #define PIPE_BUFFER_MAX_LEN (PIPE_BUF)
