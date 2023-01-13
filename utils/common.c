@@ -26,12 +26,18 @@ ssize_t try_write(int fd, const void *buf, size_t count) {
 char * parse_message(u_int8_t opcode, char * pipename, char * box_name ) {
     
     char* buffer = (char* ) malloc(sizeof(uint8_t) + CLIENT_NAMED_PIPE_PATH_LENGTH + BOX_NAME_LENGTH);
+    if (buffer == NULL) {
+        printf("Failed to allocate memory\n");
+        return NULL;
+    }
+
     char * tmp = buffer;
     
     memcpy(tmp, &opcode, sizeof(uint8_t));
     tmp++;  
     
     //if pipename length is bigger than CLIENT_NAMED_PIPE_PATH_LENGTH, it will be truncated              
+    
     memcpy(tmp, pipename, CLIENT_NAMED_PIPE_PATH_LENGTH);
     tmp += CLIENT_NAMED_PIPE_PATH_LENGTH;   
     
