@@ -44,10 +44,7 @@ typedef struct client {
     int box_fd; //file descriptor of the box (for subscribers)
     char client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH + 1];
     int client_pipe;
-    bool to_do;
     pthread_t thread_id;
-    pthread_cond_t cond; //condition variable to wake up the client
-    pthread_mutex_t lock;
 } client_t;
 
 
@@ -75,6 +72,7 @@ int handle_messages_to_subscriber(client_t *client);
 
 // parser functions
 int parser(uint8_t op_code, int parser_fnc(client_t *client));
+int parser_new (uint8_t op_code);
 int parse_box(client_t *client);
 int parse_list(client_t *client);
 

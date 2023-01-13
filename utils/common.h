@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "../mbroker/mbroker.h"
 
 
 
@@ -74,13 +75,13 @@ char * parse_message(u_int8_t opcode, char * pipename, char * box_name );
 #define safe_mutex_lock(mutex)\
     if (pthread_mutex_lock(mutex) != 0) {\
         printf("Failed to lock mutex %p", mutex);\
-        return -1;\
+        close_server(EXIT_FAILURE);\
     }                                                                        
 
 #define safe_mutex_unlock(mutex)\
     if (pthread_mutex_unlock(mutex) != 0) {\
-    printf("Failed to unlock mutex %p", mutex);\
-    return -1;\
+        printf("Failed to unlock mutex %p", mutex);\
+        close_server(EXIT_FAILURE);\
     }
 
 #endif /* COMMON_H */

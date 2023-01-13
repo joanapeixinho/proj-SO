@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
                     return -1;
             }
             */
-            //parser(op_code);
+            parser_new(op_code);
 
             bytes_read = read(server_pipe, &op_code, sizeof(char));
         }
@@ -131,11 +131,6 @@ int mbroker_init() {
 
     for (int i = 0; i < max_sessions; ++i) {
         clients[i].session_id = i;
-        clients[i].to_do = false;
-        pthread_mutex_init(&clients[i].lock, NULL);
-        if (pthread_cond_init(&clients[i].cond, NULL) != 0) {
-            return -1;
-        }
         if (pthread_create(&clients[i].thread_id, NULL, client_session,
                            &clients[i]) != 0) {
             return -1;
@@ -150,18 +145,13 @@ int mbroker_init() {
 void *client_session(void *client_in_array) {
     client_t *client = (client_t *)client_in_array;
     while (true) {
-        if (pthread_mutex_lock(&client->lock) != 0) {
-            perror("Failed to lock mutex");
-            close_server(EXIT_FAILURE);
-        }
 
-        while (!client->to_do) {
-            if (pthread_cond_wait(&client->cond, &client->lock) != 0) {
-                perror("Failed to wait for condition variable");
-                close_server(EXIT_FAILURE);
-            }
+        request_t* request = (request_t*) pcq_dequeue(&pc_queue);
+        client->opcode = request->opcode;
+        memcpy(client->client_pipename, request->client_pipename, CLIENT_NAMED_PIPE_PATH_LENGTH + 1);
+        if( request->opcode != OP_CODE_LIST_BOXES) {
+            memcpy(client->box_name, request->box_name, BOX_NAME_LENGTH + 1);
         }
-
         int result = 0;
 
         switch (client->opcode) { 
@@ -193,12 +183,6 @@ void *client_session(void *client_in_array) {
                 perror("Failed to free client");
                 close_server(EXIT_FAILURE);
             }
-        }
-
-        client->to_do = false;
-        if (pthread_mutex_unlock(&client->lock) != 0) {
-            perror("Failed to unlock mutex");
-            close_server(EXIT_FAILURE);
         }
     }
 }
@@ -243,17 +227,11 @@ int handle_tfs_register(client_t *client) {
 }
 
 box_t* get_box(char *box_name) {
-    if (pthread_mutex_lock(&boxes_lock) != 0) {
-        perror("Failed to lock mutex");
-        return NULL;
-    }
+    safe_mutex_lock(&boxes_lock);
     //get box from linkedlist using get_data_by_value
     box_t *box = (box_t *)get_data_by_value(boxes, box_name, compare_box_names);
     //return box
-    if (pthread_mutex_unlock(&boxes_lock) != 0) {
-        perror("Failed to unlock mutex");
-        return NULL;
-    }
+    safe_mutex_unlock(&boxes_lock);
     return box;
 }
 
@@ -313,18 +291,6 @@ void close_server(int exit_code) {
 
 int free_client (int session_id) {
     client_t *client = &clients[session_id];
-    if (pthread_mutex_lock(&client->lock) != 0) {
-        perror("Failed to lock mutex");
-        return -1;
-    }
-    if (pthread_cond_destroy(&client->cond) != 0) {
-        perror("Failed to destroy condition variable");
-        return -1;
-    }
-    if (pthread_mutex_destroy(&client->lock) != 0) {
-        perror("Failed to destroy mutex");
-        return -1;
-    }
     if (pthread_join(client->thread_id, NULL) != 0) {
         perror("Failed to join thread");
         return -1;
@@ -355,13 +321,6 @@ int parser(uint8_t op_code, int parser_fnc (client_t *)) {
         printf("Failed to parse message\n");
         return -1;
     }
-    safe_mutex_lock(&client->lock);
-    client->to_do = true;
-    if (pthread_cond_signal(&client->cond) != 0) {
-        perror("Failed to signal condition variable");
-        return -1;
-    }
-    safe_mutex_unlock(&client->lock);
     return 0;
 }
 
@@ -376,7 +335,7 @@ int parser_new (uint8_t op_code) {
         read_pipe(server_pipe, &request->box_name, sizeof(char)* BOX_NAME_LENGTH);
         request->box_name[BOX_NAME_LENGTH] = '\0';
     }
-    
+    //Sends request to the queue to wait to be popped by a client session
     if(pcq_enqueue(&pc_queue, &request) == -1){
         printf("Failed to enqueue request\n");
         return -1;
