@@ -1,9 +1,9 @@
 #ifndef MBROKER_H
 #define MBROKER_H
 
-#include "common/common.h"
-#include "common/linkedlist.h"
-#include "fs/operations.h"
+#include "../utils/common.h"
+#include "../utils/linkedlist.h"
+#include "../fs/operations.h"
 #include "config.h"
 #include <pthread.h>
 #include <stdbool.h>
@@ -51,9 +51,10 @@ int mbroker_init();
 void close_server(int exit_code);
 
 // client session functions
-void *client_session(void *client_in_array);
+void* client_session(void *client_in_array);
 int free_client(int session_id);
 int get_free_client();
+int free_client_session(int session_id);
 
 //handle functions
 int handle_tfs_register(client_t *client);
@@ -63,15 +64,20 @@ int handle_tfs_remove_box(client_t *client);
 int handle_tfs_remove_box_answer(client_t *client);
 int handle_tfs_list_boxes(client_t *client);
 int handle_tfs_list_boxes_answer(client_t *client);
-int handle_tfs_write(client_t *client);
+int handle_messages_from_publisher(client_t *client);
+int handle_messages_to_subscriber(client_t *client);
+
 
 // parser functions
-int parser(char op_code, int parser_fnc(client_t *client));
-int parse_box(client_t *client);
+int parser(uint8_t op_code, int parser_fnc(client_t *client));
+int parse_client_and_box(client_t *client);
+int parse_client(client_t *client);
 int parse_list(client_t *client);
 
 // box functions
 int create_box(char *box_name);
+box_t* get_box(char *box_name);
+int compare_box_names(const void *box,const void *box_name);
 
 
 #endif

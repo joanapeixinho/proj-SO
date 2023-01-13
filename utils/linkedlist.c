@@ -5,7 +5,8 @@
 
 void push(node_t* head, void* data) {
     struct node* new_node = (struct node*) malloc(sizeof(struct node));
-    new_node->data = data;
+    void *new_data = malloc(sizeof(data));
+    new_node->data = new_data;
     new_node->next = head;
     head = new_node;
 }

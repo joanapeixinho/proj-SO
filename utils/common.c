@@ -1,8 +1,10 @@
 #include <errno.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <stdint.h>
 #include "common.h"
+#include <stdlib.h>
+#include <string.h>
+
 
 ssize_t try_read(int fd, void *buf, size_t count) {
     ssize_t bytes_read;
@@ -23,7 +25,7 @@ ssize_t try_write(int fd, const void *buf, size_t count) {
 //parse message from client
 char * parse_message(u_int8_t opcode, char * pipename, char * box_name ) {
     
-    char buffer [CLIENT_NAMED_PIPE_PATH_LENGTH  + BOX_NAME_LENGTH + 1] = {0};
+    char* buffer = (char* ) malloc(sizeof(uint8_t) + CLIENT_NAMED_PIPE_PATH_LENGTH + BOX_NAME_LENGTH);
     char * tmp = buffer;
     
     memcpy(tmp, &opcode, sizeof(uint8_t));

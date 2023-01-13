@@ -3,9 +3,8 @@
 
 
 
-static int max_sessions;
+static unsigned long int max_sessions;
 static int num_boxes;
-static int max_boxes;
 static int server_pipe;
 static char *pipename;
 
@@ -17,6 +16,7 @@ static pthread_mutex_t boxes_lock;
 static bool *free_clients;
 static pthread_mutex_t free_clients_lock;
 
+
 int main(int argc, char **argv) {
 
     if (argc != 3) {
@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
         return -1;
     }    
 
-    max_sessions = atoi(argv[2]);
+    max_sessions = strtoul(argv[2], NULL, 10);
 
     //Initialize mbroker
     if (mbroker_init() != 0) {
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     
     pipename = argv[1];
 
-    if (unlink(pipename) == -1 ) {
+    if (tfs_unlink(pipename) == -1 ) {
         printf("Failed to unlink pipe %s\n", pipename);
         return -1;
     }
@@ -49,9 +49,9 @@ int main(int argc, char **argv) {
         return -1;
     }
     
-    if (server_pipe = open(pipename, O_RDONLY) < 0 ) {
+    if ((server_pipe = open(pipename, O_RDONLY)) < 0 ) {
         printf("Failed to open server pipe %s\n", pipename);
-        unlink(pipename);
+        tfs_unlink(pipename);
         return -1;
     }
 
@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
         }
 
         ssize_t bytes_read;
-        char op_code;
+        uint8_t op_code;
 
         bytes_read = read(server_pipe, &op_code, sizeof(char));
 
@@ -117,13 +117,13 @@ int main(int argc, char **argv) {
 }
 
 int mbroker_init() {
-    clients = malloc(max_sessions * sizeof(client_t));
-    free_clients = malloc(max_sessions * sizeof(bool));
+    clients =   (client_t*) malloc(max_sessions * sizeof(client_t));
+    free_clients = (bool*) malloc(max_sessions * sizeof(bool));
 
     for (int i = 0; i < max_sessions; ++i) {
         clients[i].session_id = i;
         clients[i].to_do = false;
-        mutex_init(&clients[i].lock);
+        pthread_mutex_init(&clients[i].lock, NULL);
         if (pthread_cond_init(&clients[i].cond, NULL) != 0) {
             return -1;
         }
@@ -133,15 +133,18 @@ int mbroker_init() {
         }
         free_clients[i] = true; // all clients are free in the beginning
     }
-    mutex_init(&free_clients_lock);
-    mutex_init(&boxes_lock);
+    pthread_mutex_init(&free_clients_lock, NULL);
+    pthread_mutex_init(&boxes_lock, NULL);
     return 0;
 }
 
 void *client_session(void *client_in_array) {
     client_t *client = (client_t *)client_in_array;
     while (true) {
-        safe_mutex_lock(&client->lock);
+        if (pthread_mutex_lock(&client->lock) != 0) {
+            perror("Failed to lock mutex");
+            close_server(EXIT_FAILURE);
+        }
 
         while (!client->to_do) {
             if (pthread_cond_wait(&client->cond, &client->lock) != 0) {
@@ -169,9 +172,7 @@ void *client_session(void *client_in_array) {
         case OP_CODE_LIST_BOXES:
             result = handle_tfs_list_boxes(client);
             break;
-        case OP_CODE_PUBLISHER:
-            result = handle_tfs_write_box(client);
-            break;
+       
         default:
             break;
         }
@@ -186,7 +187,10 @@ void *client_session(void *client_in_array) {
         }
 
         client->to_do = false;
-        safe_mutex_unlock(&client->lock);
+        if (pthread_mutex_unlock(&client->lock) != 0) {
+            perror("Failed to unlock mutex");
+            close_server(EXIT_FAILURE);
+        }
     }
 }
 
@@ -210,7 +214,13 @@ int handle_tfs_register(client_t *client) {
 
     //Check if the box already has a publisher
     if(client->opcode == OP_CODE_REGIST_PUB){
-        if(get_box(client->box_name)->n_publishers == 1){
+        box_t *box = get_box(client->box_name);
+        if(box == NULL){
+            printf("Box %s does not exist\n", client->box_name);
+            safe_close(client_pipe);
+            return -1;
+        }
+        if(box->n_publishers == 1){
             printf("Box %s already has a publisher\n", client->box_name);
             safe_close(client_pipe);
             return -1;
@@ -224,16 +234,23 @@ int handle_tfs_register(client_t *client) {
 }
 
 box_t* get_box(char *box_name) {
-    safe_mutex_lock(&boxes_lock);
+    if (pthread_mutex_lock(&boxes_lock) != 0) {
+        perror("Failed to lock mutex");
+        return NULL;
+    }
     //get box from linkedlist using get_data_by_value
     box_t *box = (box_t *)get_data_by_value(boxes, box_name, compare_box_names);
     //return box
-    safe_mutex_unlock(&boxes_lock);
+    if (pthread_mutex_unlock(&boxes_lock) != 0) {
+        perror("Failed to unlock mutex");
+        return NULL;
+    }
     return box;
 }
 
-int compare_box_names(node_t * node, char *box_name) {
-    box_t *box = (box_t *)node->data;
+int compare_box_names(void* node, void *box_name) {
+    node_t* new_node = (node_t *)node;
+    box_t *box = (box_t *)new_node->data;
     return strcmp(box->box_name, box_name);
 }
 
@@ -282,7 +299,38 @@ void close_server(int exit_code) {
     exit(exit_code);
 }
 
-int parse (char op_code, int parser_fnc (client_t *)) {
+//destroy client 
+
+int free_client (int session_id) {
+    client_t *client = &clients[session_id];
+    if (pthread_mutex_lock(&client->lock) != 0) {
+        perror("Failed to lock mutex");
+        return -1;
+    }
+    if (pthread_cond_destroy(&client->cond) != 0) {
+        perror("Failed to destroy condition variable");
+        return -1;
+    }
+    if (pthread_mutex_destroy(&client->lock) != 0) {
+        perror("Failed to destroy mutex");
+        return -1;
+    }
+    if (pthread_join(client->thread_id, NULL) != 0) {
+        perror("Failed to join thread");
+        return -1;
+    }
+    if (close(client->client_pipe) == -1) {
+        perror("Failed to close pipe");
+        return -1;
+    }
+    if (free_client_session(client->session_id) == -1) {
+        perror("Failed to free client");
+        return -1;
+    }
+    return 0;
+}
+
+int parser(uint8_t op_code, int parser_fnc (client_t *)) {
     int session_id = get_free_client_session();
     if (session_id == -1) {
         printf("No free sessions\n");
@@ -328,9 +376,8 @@ int parse_client_and_box(client_t * client) {
     box_name[BOX_NAME_LENGTH] = '\0';
 
     if(client->opcode == 3){ //If you need to create this box
-        box_t *tmp_box = (box_t *) malloc(sizeof(box_t)); //Temporary box used to store a box name
         strcpy(client->box_name, box_name);
-    } else if((client->box_name = get_box(box_name)) == NULL) { //If you need to register to this box
+    } else if((client->box = get_box(box_name)) == NULL) { //If you need to register to this box
         printf("Box %s does not exist\n", box_name);
         return -1;
     }
@@ -338,12 +385,7 @@ int parse_client_and_box(client_t * client) {
     return 0;
 }
 
-int parse_list (client_t *client) {
-    //read opcode to client from pipe
-    read_pipe(server_pipe, &client->opcode, sizeof(uint8_t));
-    //read client pipename to client from pipe
-    read_pipe(server_pipe, &client->client_pipename, sizeof(char)* CLIENT_NAMED_PIPE_PATH_LENGTH);
-}
+
 
 int handle_tfs_remove_box(client_t *client) {
 
@@ -357,7 +399,7 @@ int handle_tfs_remove_box(client_t *client) {
         return -1;
     }
 
-    remove_by_value(&boxes, get_box(client->box_name), compare_box_names);
+    remove_by_value(boxes, get_box(client->box_name), compare_box_names);
 
    //end all client sessions with this box
     for (int i = 0; i < max_sessions; ++i) {
@@ -369,13 +411,15 @@ int handle_tfs_remove_box(client_t *client) {
         }
     }
 
+    tfs_unlink(client->box_name);
+
     safe_mutex_unlock(&boxes_lock);
     return 0;
 }
 
-int handle_list_response (client_t client) {
+int handle_tfs_list_boxes (client_t *client) {
     //open client pipe
-    int client_pipe = open(client.client_pipename, O_WRONLY);
+    int client_pipe = open(client->client_pipename, O_WRONLY);
     if (client_pipe < 0) {
         perror("Failed to open pipe");
         return -1;
@@ -386,7 +430,7 @@ int handle_list_response (client_t client) {
     
     while (boxes != NULL) {
         box_t *box = boxes->data;
-        memcpy(buffer, &client.opcode, sizeof(uint8_t));
+        memcpy(buffer, &client->opcode, sizeof(uint8_t));
         
         if (boxes->next == NULL) {
             last = 1;
@@ -399,7 +443,7 @@ int handle_list_response (client_t client) {
         memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t)*2, &box->n_subscribers, sizeof(uint64_t));
         write_pipe(client_pipe, buffer, sizeof(uint8_t) * 2 + BOX_NAME_LENGTH + sizeof(uint64_t) * 3);
         
-        free(buffer);
+    
         boxes = boxes->next;
     }
     //close client pipe
@@ -461,10 +505,11 @@ int create_box(char * box_name) {
     pthread_mutex_init(&tmp_box->lock, NULL);
     pthread_cond_init(&tmp_box->cond, NULL);
     num_boxes++;
-    push(&boxes, tmp_box);
+    push(boxes, tmp_box);
 
     return 0;
 }
+
 
 int handle_messages_from_publisher(client_t *client){
     uint8_t opcode;
@@ -501,7 +546,7 @@ int handle_messages_from_publisher(client_t *client){
             tfs_close(fhandle);
             return -1;
         }
-        box->box_size += bytes_written;
+        box->box_size += strlen(message) + 1;
         box->new_message = 1;
         tfs_close(fhandle);
         //Signal subscribers
@@ -513,7 +558,7 @@ int handle_messages_from_publisher(client_t *client){
 }
 
 //read messages from subscriber's box and send to client
-handle_messages_to_subscriber(client_t *client){
+int handle_messages_to_subscriber(client_t *client){
     char message[MESSAGE_LENGTH + 1];
     ssize_t bytes_read;
     ssize_t bytes_written;
@@ -539,7 +584,7 @@ handle_messages_to_subscriber(client_t *client){
             return -1;
         }
 
-        bytes_written = write_pipe(client->client_pipe, message , strlen(message) + 1);
+        bytes_written = try_write(client->client_pipe, message , strlen(message)+1 );
 
         if(bytes_written < 0){
             printf("Failed to write to pipe %d\n", client->client_pipe);
@@ -551,5 +596,5 @@ handle_messages_to_subscriber(client_t *client){
             return -1;
         }
     }
-
+    return 0;
 }

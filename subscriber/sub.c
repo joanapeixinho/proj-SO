@@ -93,7 +93,6 @@ void sigint_handler(int sig) {
         //write error message to stderr
         write(2, error_message, strlen(error_message) + 1);
         safe_close(pipe_fd);
-
         //restore default handler
         signal(sig, SIG_DFL);
         raise(sig);

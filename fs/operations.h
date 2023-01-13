@@ -3,7 +3,7 @@
 
 #include "config.h"
 #include <sys/types.h>
-#include <common/common.h>
+#include "../utils/common.h"
 
 /**
  * TécnicoFS parameters.
