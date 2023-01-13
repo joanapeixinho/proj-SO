@@ -1,6 +1,6 @@
 #include "logging.h"
 #include <stdbool.h>
-#include <common/common.h>
+#include "../utils/common.h"
 #include <stdint.h>
 
 
@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
         return -1;
     }
     //Try to register the publisher
-    write_pipe(register_pipe, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
+    write_pipe(register_pipe_fd, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
    //Delete the pipe if it already exists
    
     if (unlink(pipe_name) < 0) {

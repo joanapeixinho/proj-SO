@@ -2,9 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include <common/common.h>
+#include <../utils/common.h>
 //include mbroker headerfile
-#include "mbroker.h"
+#include "../mbroker/mbroker.h"
+
+int list_boxes(int pipefd);
+
 
 static void print_usage() {
     fprintf(stderr, "usage: \n"
@@ -95,7 +98,7 @@ int list_boxes (int pipefd) {
 
         uint8_t op_code;
         uint8_t last = 0;
-        int count = 0;
+        size_t count = 0;
         box_t boxes[MAX_BOXES];
        
         while (last == 0) {
@@ -113,8 +116,8 @@ int list_boxes (int pipefd) {
             read_pipe(pipefd, boxes[count].box_name, BOX_NAME_LENGTH*sizeof(char));
             boxes[count].box_name[BOX_NAME_LENGTH] = '\0';
             read_pipe(pipefd, &boxes[count].box_size, sizeof(uint64_t));
-            read_pipe(pipefd, &boxes[count].n_pubs, sizeof(uint64_t));
-            read_pipe(pipefd, &boxes[count].n_subs, sizeof(uint64_t));
+            read_pipe(pipefd, &boxes[count].n_publishers, sizeof(uint64_t));
+            read_pipe(pipefd, &boxes[count].n_subscribers, sizeof(uint64_t));
             count++;
         }
         
@@ -123,14 +126,14 @@ int list_boxes (int pipefd) {
 
         //print boxes
         for (int i = 0; i < count; i++) {
-            fprintf(stdout, "%s %zu %zu %zu\n", boxes[i].box_name, boxes[i].box_size, boxes[i].n_pubs, boxes[i].n_subs);
+            fprintf(stdout, "%s %zu %zu %zu\n", boxes[i].box_name, boxes[i].box_size, boxes[i].n_publishers, boxes[i].n_subscribers);
         }
 
         return 0;
 }
 
 int compare_box_names(const void* box_a, const void* box_b) {
-    box_t* box_a = (box_t*) box_a;
-    box_t* box_b = (box_t*) box_b;
-    return strcmp(box_a->box_name, box_b->box_name);
+    box_t* a = (box_t*) box_a;
+    box_t* b = (box_t*) box_b;
+    return strcmp(a->box_name, b->box_name);
 }
