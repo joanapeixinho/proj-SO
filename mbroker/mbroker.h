@@ -33,7 +33,7 @@ typedef struct {
 typedef struct client {
     uint8_t opcode; 
     int session_id;
-    box_t *box;
+    char* box_name;
     char client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH + 1];
     int client_pipe;
     bool to_do;

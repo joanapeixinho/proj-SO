@@ -20,17 +20,21 @@ ssize_t try_write(int fd, const void *buf, size_t count) {
     return bytes_written;
 }
 
+//parse message from client
 char * parse_message(u_int8_t opcode, char * pipename, char * box_name ) {
     
     char buffer [CLIENT_NAMED_PIPE_PATH_LENGTH  + BOX_NAME_LENGTH + 1] = {0};
     char * tmp = buffer;
     
     memcpy(tmp, &opcode, sizeof(uint8_t));
-    tmp++;                 //Move the pointer to the next position
+    tmp++;  
+    
+    //if pipename length is bigger than CLIENT_NAMED_PIPE_PATH_LENGTH, it will be truncated              
     memcpy(tmp, pipename, CLIENT_NAMED_PIPE_PATH_LENGTH);
-    tmp += CLIENT_NAMED_PIPE_PATH_LENGTH;   //Move the pointer to the next position
+    tmp += CLIENT_NAMED_PIPE_PATH_LENGTH;   
     
     if (box_name != NULL) {
+        //if box_name length is bigger than BOX_NAME_LENGTH, it will be truncated
         memcpy(tmp, box_name, BOX_NAME_LENGTH);
     }
     

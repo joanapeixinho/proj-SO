@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    if (tfs_init() != 0) {
+    if (tfs_init(NULL) != 0) {
         printf("Failed to init tfs\n");
         return -1;
     }
@@ -208,8 +208,8 @@ int handle_tfs_register(client_t *client) {
 
     //Check if the box already has a publisher
     if(client->opcode == OP_CODE_REGIST_PUB){
-        if(client->box->n_publishers == 1){
-            printf("Box %s already has a publisher\n", client->box->box_name);
+        if(get_box(client->box_name)->n_publishers == 1){
+            printf("Box %s already has a publisher\n", client->box_name);
             safe_close(client_pipe);
             return -1;
         }
@@ -319,9 +319,8 @@ int parse_client_and_box(client_t * client) {
 
     if(client->opcode == 3){ //If you need to create this box
         box_t *tmp_box = (box_t *) malloc(sizeof(box_t)); //Temporary box used to store a box name
-        strcpy(tmp_box->box_name, box_name);
-        client->box = tmp_box;
-    } else if((client->box = get_box(box_name)) == NULL) { //If you need to register to this box
+        strcpy(client->box_name, box_name);
+    } else if((client->box_name = get_box(box_name)) == NULL) { //If you need to register to this box
         printf("Box %s does not exist\n", box_name);
         return -1;
     }
@@ -341,10 +340,18 @@ int parse_list (client_t *client) {
 int handle_tfs_remove_box(client_t *client) {
     //remove box from linkedlist using remove_by_value
     safe_mutex_lock(&boxes_lock);
-    remove_by_value(&boxes, client->box, compare_box_names);
 
-    //free box
-    free(client->box);
+    //if box doesnt exist print error
+    if (get_box(client->box_name) == NULL) {
+        printf("Box %s does not exist\n", client->box_name);
+        safe_mutex_unlock(&boxes_lock);
+        return -1;
+    }
+
+    remove_by_value(&boxes, get_box(client->box_name), compare_box_names);
+
+    client->box_name = NULL;
+
     safe_mutex_unlock(&boxes_lock);
 
     return 0;
@@ -384,29 +391,36 @@ int handle_list_response (client_t client) {
 
     return 0;
 }
-
    
-
-
 int handle_tfs_create_box(client_t *client) {
     
     safe_mutex_lock(&boxes_lock);
 
-    if (contains(&boxes,client->box, compare_box_names)) {
-        printf("Box %s already exists\n", client->box->box_name);
+    if (client->box_name == NULL) {
         safe_mutex_unlock(&boxes_lock);
         return -1;
     }
 
-    if (create_box(client->box->box_name) < 0) {
+    if(num_boxes == MAX_BOXES) {
+        printf("Max number of boxes reached\n");
+        safe_mutex_unlock(&boxes_lock);
+        return -1;
+    }
+
+    if (get_box(client->box_name) != NULL) {
+        printf("Box %s already exists\n", client->box_name);
+        safe_mutex_unlock(&boxes_lock);
+        return -1;
+    }
+
+
+    if (create_box(client->box_name) < 0) {
         safe_mutex_unlock(&boxes_lock);
         return -1;
     }
     
     safe_mutex_unlock(&boxes_lock);
-
     return 0;
-    
 }
 
 int create_box(char * box_name) {
@@ -427,6 +441,7 @@ int create_box(char * box_name) {
     tmp_box->n_publishers = 0;
     tmp_box->n_subscribers = 0;
 
+    num_boxes++;
     push(&boxes, tmp_box);
 
     return 0;
@@ -449,17 +464,17 @@ int handle_messages_from_publisher(client_t *client){
             return -1;
         }
         read_pipe(client->client_pipe, &message, MESSAGE_LENGTH);
-
+        box_t* box = get_box(client->box_name);
         //Write message with '\0' at the end to box
-        bytes_written = tfs_write(client->box->fhandle, message, strlen(message) + 1);
+        bytes_written = tfs_write(box->fhandle, message, strlen(message) + 1);
         if(bytes_written < 0){
-            printf("Failed to write to box %s in tfs\n", client->box->box_name);
+            printf("Failed to write to box %s in tfs\n", box->box_name);
             return -1;
         } else if(bytes_written < strlen(message) + 1){
-            printf("Box %s is full\n", client->box->box_name);
+            printf("Box %s is full\n", box->box_name);
             return -1;
         }
-        client->box->box_size += bytes_written;
+        box->box_size += bytes_written;
 
     }
 }
