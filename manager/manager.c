@@ -7,7 +7,6 @@
 #include "../mbroker/mbroker.h"
 
 int list_boxes(int pipefd);
-int compare_box_names(void *box, void *box_name);
 
 static void print_usage() {
     fprintf(stderr, "usage: \n"
@@ -81,7 +80,12 @@ int main(int argc, char **argv) {
         }
         buffer = parse_message(OP_CODE_LIST_BOXES, pipe_name, NULL);
         write_pipe(register_pipefd, buffer, sizeof(uint8_t) + CLIENT_NAMED_PIPE_PATH_LENGTH*sizeof(char));
-        list_boxes(pipefd);
+        if (list_boxes(pipefd) == -1 ) {
+            close(register_pipefd);
+            close(pipefd);
+            return -1;
+        }
+        return 0;
     } else {
         print_usage();
         close(register_pipefd);
