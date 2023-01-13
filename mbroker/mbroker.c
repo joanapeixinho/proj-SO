@@ -419,6 +419,7 @@ int handle_tfs_create_box(client_t *client) {
         return -1;
     }
     
+
     safe_mutex_unlock(&boxes_lock);
     return 0;
 }
@@ -436,11 +437,13 @@ int create_box(char * box_name) {
     
     box_t *tmp_box = (box_t *) malloc(sizeof(box_t));
 
-    tmp_box->fhandle = fhandle;
+    
     tmp_box->box_size = 0;
     tmp_box->n_publishers = 0;
     tmp_box->n_subscribers = 0;
-
+    //initiate threadlock
+    pthread_mutex_init(&tmp_box->lock, NULL);
+    pthread_cond_init(&tmp_box->cond, NULL);
     num_boxes++;
     push(&boxes, tmp_box);
 
