@@ -2,11 +2,16 @@
 #define __COMMON_H__
 
 #include <sys/types.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "../mbroker/mbroker.h"
-
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <strings.h>
 
 
 #define PIPE_BUFFER_MAX_LEN (PIPE_BUF)

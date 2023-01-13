@@ -122,7 +122,7 @@ int list_boxes (int pipefd) {
         }
         
         //sort boxes by name
-        qsort(boxes, count, sizeof(box_t), compare_box_names);
+        qsort(boxes, count, sizeof(box_t), compare_boxes);
 
         //print boxes
         for (int i = 0; i < count; i++) {
@@ -132,8 +132,8 @@ int list_boxes (int pipefd) {
         return 0;
 }
 
-int compare_box_names(const void* box_a, const void* box_b) {
+int compare_boxes(const void* box_a, const void* box_b) {
     box_t* a = (box_t*) box_a;
     box_t* b = (box_t*) box_b;
-    return strcmp(a->box_name, b->box_name);
+    return strcasecmp(a->box_name, b->box_name);
 }

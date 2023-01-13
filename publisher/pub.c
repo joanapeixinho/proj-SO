@@ -15,6 +15,12 @@ int main(int argc, char **argv) {
     char* pipe_name = argv[2];
 
     char* buffer = parse_message(OP_CODE_REGIST_PUB, pipe_name, argv[3]);
+
+    if (buffer == NULL) {
+        fprintf(stderr, "Failed to parse message\n");
+        return -1;
+    }
+
     int register_pipe_fd = open(register_pipe, O_WRONLY);
    
     if (register_pipe_fd < 0) {
@@ -38,7 +44,7 @@ int main(int argc, char **argv) {
 
     int pipe_fd = open(pipe_name, O_WRONLY);
    
-    char* message[MESSAGE_LENGTH + 1];              //The message is composed by the op_code(+1) and the message text
+    char message[MESSAGE_LENGTH + 1];              //The message is composed by the op_code(+1) and the message text
     char* message_text = message + sizeof(uint8_t); //The message text starts after the op_code
     uint8_t op_code = OP_CODE_PUBLISHER;
     memcpy(message, &op_code, sizeof(uint8_t));
@@ -48,19 +54,26 @@ int main(int argc, char **argv) {
     ssize_t bytes_written;
     while(true){
         //Each line from stdin is a message_text
-        memset(message_text,0,MESSAGE_LENGTH*sizeof(char)); //Clear the message text
+        memset(message_text,0,MESSAGE_LENGTH*sizeof(char)); 
+        
         if (getline(&message_text, &len, stdin) < 0) {
-            printf("Failed to read line\n");
-        }
-        if (strcmp(message_text, EOF ) == 0) {
-            safe_close(pipe_fd);
-            return 0;
+            fprintf(stderr, "Failed to read from stdin\n");
+           
         }
 
+        if (feof(stdin)) {
+                safe_close(pipe_fd);
+                printf("EOF reached. Exiting ...\n");
+                return 0;
+        }
+      
         bytes_written =  try_write(pipe_fd, message, sizeof(uint8_t) + MESSAGE_LENGTH*sizeof(char));
         if(bytes_written < 0){ //An error occurred during writing
+            safe_close(pipe_fd);
+            fprintf(stderr, "Failed to write to pipe %s\n", pipe_name);
             return -1;
         } else if (bytes_written == 0){ //The pipe is closed
+            safe_close(pipe_fd);
             printf("The pipe is closed. Exiting ...\n");
             return 0;
         }

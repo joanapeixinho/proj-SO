@@ -8,12 +8,14 @@ int pcq_create(pc_queue_t *queue, size_t capacity){
     queue->pcq_current_size = 0;
     queue->pcq_head = 0;
     queue->pcq_tail = 0;
+    request_t** buffer;
     
-    //TODO: change (void *) to struct of registry
-    if(queue->pcq_buffer = (request_t**) malloc(capacity * sizeof(request_t)) == NULL){
-        free(queue->pcq_buffer);
+    
+    if(( buffer = (request_t**) malloc(capacity * sizeof(request_t))) == NULL){
+        printf("Error allocating memory for the queue buffer");
         return -1;
     }
+    queue->pcq_buffer = (void **) buffer;
 
     if(pthread_mutex_init(&queue->pcq_current_size_lock, NULL) != 0){
         free(queue->pcq_buffer);
