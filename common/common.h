@@ -73,8 +73,8 @@ ssize_t try_write(int fd, const void *buf, size_t count);
         return -1;                                                             
     }
 
-#define safe_mutex_unlock(mutex)
-    if (pthread_mutex_unlock(mutex) != 0) {                                    
+#define safe_mutex_unlock(mutex)                        \
+    if (pthread_mutex_unlock(mutex) != 0) {             \                   
         printf("Failed to unlock mutex %p", mutex);
         return -1;                                                             
     }

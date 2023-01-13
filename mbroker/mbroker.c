@@ -1,14 +1,13 @@
 #include "mbroker.h"
 
 
-
-
 static int max_sessions;
 static int num_boxes;
 static int max_boxes;
 static int server_pipe;
 static char *pipename;
 
+static pc_queue_t pc_queue;
 
 static client_t *clients;
 static node_t *boxes;
@@ -81,6 +80,7 @@ int main(int argc, char **argv) {
         bytes_read = read(server_pipe, &op_code, sizeof(char));
 
         while (bytes_read > 0) {
+            /*
             switch (op_code) {
                 case OP_CODE_REGIST_PUB:
                     parser(op_code, parse_client_and_box);
@@ -102,6 +102,9 @@ int main(int argc, char **argv) {
                     close_server(EXIT_FAILURE);
                     return -1;
             }
+            */
+            //parser(op_code);
+
             bytes_read = read(server_pipe, &op_code, sizeof(char));
         }
 
@@ -119,6 +122,10 @@ int main(int argc, char **argv) {
 int mbroker_init() {
     clients = malloc(max_sessions * sizeof(client_t));
     free_clients = malloc(max_sessions * sizeof(bool));
+
+    if( pcq_create(&pc_queue, max_sessions) != 0 ) {
+        return -1;
+    }
 
     for (int i = 0; i < max_sessions; ++i) {
         clients[i].session_id = i;
@@ -277,11 +284,13 @@ void close_server(int exit_code) {
             exit(EXIT_FAILURE);
         }
     }
+    pcq_destroy(&queue);
     free(clients);
     free(free_clients);
     exit(exit_code);
 }
 
+/*
 int parse (char op_code, int parser_fnc (client_t *)) {
     int session_id = get_free_client_session();
     if (session_id == -1) {
@@ -306,7 +315,28 @@ int parse (char op_code, int parser_fnc (client_t *)) {
     safe_mutex_unlock(&client->lock);
     return 0;
 }
+*/
 
+int parse (char op_code) {
+    
+    request_t* request = (request_t*) malloc(sizeof(request_t));
+    request->opcode = op_code;
+    read_pipe(server_pipe, &request->client_pipename, sizeof(char)* CLIENT_NAMED_PIPE_PATH_LENGTH);
+    request->client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH] = '\0';
+    if(op_code != OP_CODE_LIST_BOXES){
+        read_pipe(server_pipe, &request->box_name, sizeof(char)* BOX_NAME_LENGTH);
+        request->box_name[BOX_NAME_LENGTH] = '\0';
+    }
+    
+    if(pcq_enqueue(&queue, &request) == -1){
+        printf("Failed to enqueue request\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+/*
 int parse_client(client_t *client) {
     //read opcode to client from pipe
     read_pipe(server_pipe, &client->opcode, sizeof(uint8_t));
@@ -344,6 +374,7 @@ int parse_list (client_t *client) {
     //read client pipename to client from pipe
     read_pipe(server_pipe, &client->client_pipename, sizeof(char)* CLIENT_NAMED_PIPE_PATH_LENGTH);
 }
+*/
 
 int handle_tfs_remove_box(client_t *client) {
 

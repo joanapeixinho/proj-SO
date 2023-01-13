@@ -3,6 +3,7 @@
 
 #include "common/common.h"
 #include "common/linkedlist.h"
+#include "producer-consumer/producer-consumer.h"
 #include "fs/operations.h"
 #include "config.h"
 #include <pthread.h>
@@ -14,10 +15,15 @@
 #include "string.h"
 #include <errno.h>
 
+typedef struct {
+    uint8_t opcode;
+    char client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH + 1];
+    char box_name[BOX_NAME_LENGTH + 1];
+} request_t;
+
 
 /* box_t is the structure that is used to communicate between the broker and the
  * clients. */
-
 typedef struct {
     char box_name[BOX_NAME_LENGTH + 1]; 
     uint64_t box_size; //total length of the messages in the box
@@ -30,7 +36,6 @@ typedef struct {
 
 /* client_t is the structure that is used to store the information about the
  * client sessions */
-
 typedef struct client {
     uint8_t opcode; 
     int session_id;
