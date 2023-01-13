@@ -191,6 +191,8 @@ void *client_session(void *client_in_array) {
 }
 
 
+
+
 int handle_tfs_register(client_t *client) {
     //Open client pipe
     int client_pipe;
@@ -218,7 +220,6 @@ int handle_tfs_register(client_t *client) {
     } else {
         handle_messages_to_subscriber(client);
     }
-
     return 0;
 }
 
@@ -466,19 +467,72 @@ int handle_messages_from_publisher(client_t *client){
             printf("Failed to read from pipe %d\n", client->client_pipe);
             return -1;
         }
+
         read_pipe(client->client_pipe, &message, MESSAGE_LENGTH);
         box_t* box = get_box(client->box_name);
-        //Write message with '\0' at the end to box
+        safe_mutex_lock(&box->lock);
         int fhandle = tfs_open(box->box_name, TFS_O_APPEND);
         bytes_written = tfs_write(fhandle, message, strlen(message) + 1);
         if(bytes_written < 0){
             printf("Failed to write to box %s in tfs\n", box->box_name);
+            tfs_close(fhandle);
+           
             return -1;
         } else if(bytes_written < strlen(message) + 1){
             printf("Box %s is full\n", box->box_name);
+            tfs_close(fhandle);
+          
             return -1;
         }
         box->box_size += bytes_written;
-
+        box->new_message = 1;
+        tfs_close(fhandle);
+        //Signal subscribers
+        pthread_cond_broadcast(&box->cond);
+        safe_mutex_unlock(&box->lock);
     }
+
+    return 0;
+}
+
+//read messages from subscriber's box and send to client
+handle_messages_to_subscriber(client_t *client){
+    char message[MESSAGE_LENGTH + 1];
+    ssize_t bytes_read;
+    ssize_t bytes_written;
+    box_t* box = get_box(client->box_name);
+    safe_mutex_lock(&box->lock);
+    int fhandle = tfs_open(box->box_name, TFS_O_APPEND);
+
+    //Read each message from box and send to client
+    //each message is terminated by '\0'
+
+    while(true){
+        while (box->new_message == 0) {
+            pthread_cond_wait(&box->cond, &box->lock);
+        }
+         
+        memset(message, 0, MESSAGE_LENGTH);
+        bytes_read = tfs_read(fhandle, message, MESSAGE_LENGTH);
+        if(bytes_read == 0){ //EOF
+            break;
+        } else if (bytes_read < 0){ //Error
+            printf("Failed to read from box %s in tfs\n", box->box_name);
+            tfs_close(fhandle);
+            return -1;
+        }
+
+        bytes_written = write_pipe(client->client_pipe, message , strlen(message) + 1);
+
+        if(bytes_written < 0){
+            printf("Failed to write to pipe %d\n", client->client_pipe);
+            tfs_close(fhandle);
+            return -1;
+        } else if(bytes_written < bytes_read){
+            printf("Failed to write to pipe %d\n", client->client_pipe);
+            tfs_close(fhandle);
+            return -1;
+        }
+    }
+
 }

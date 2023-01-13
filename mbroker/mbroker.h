@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include "logging.h"
+#include "string.h"
 #include <errno.h>
 
 
@@ -22,6 +23,7 @@ typedef struct {
     uint64_t box_size; //total length of the messages in the box
     uint64_t n_publishers; //0 or 1 max
     uint64_t n_subscribers;
+    bool new_message; //true if there is a message to read
     pthread_cond_t cond; //condition variable to wake up the subscribers
     pthread_mutex_t lock;
 } box_t;
@@ -34,6 +36,7 @@ typedef struct client {
     int session_id;
     char* box_name;
     box_t *box;
+    int box_fd; //file descriptor of the box (for subscribers)
     char client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH + 1];
     int client_pipe;
     bool to_do;
