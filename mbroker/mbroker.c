@@ -218,7 +218,7 @@ int handle_tfs_register(client_t *client) {
 
         return handle_messages_from_publisher(client);
     } else {
-        handle_messages_to_subscriber(client);
+        return handle_messages_to_subscriber(client);
     }
     return 0;
 }
@@ -239,13 +239,22 @@ int compare_box_names(node_t * node, char *box_name) {
 
 int free_client_session(int session_id) {
     safe_mutex_lock(&free_clients_lock);
+    //check if the client is already free
     if (free_clients[session_id] == true) {
         safe_mutex_unlock(&free_clients_lock);
         return -1;
     }
+    //free client session
     free_clients[session_id] = true;
     safe_mutex_unlock(&free_clients_lock);
     return 0;
+}
+
+int is_client_free(int session_id) {
+    safe_mutex_lock(&free_clients_lock);
+    int result = free_clients[session_id];
+    safe_mutex_unlock(&free_clients_lock);
+    return result;
 }
 
 int get_free_client_session() {
@@ -328,17 +337,16 @@ int parse_client_and_box(client_t * client) {
     
     return 0;
 }
+
 int parse_list (client_t *client) {
     //read opcode to client from pipe
     read_pipe(server_pipe, &client->opcode, sizeof(uint8_t));
     //read client pipename to client from pipe
     read_pipe(server_pipe, &client->client_pipename, sizeof(char)* CLIENT_NAMED_PIPE_PATH_LENGTH);
-
 }
 
-
-
 int handle_tfs_remove_box(client_t *client) {
+
     //remove box from linkedlist using remove_by_value
     safe_mutex_lock(&boxes_lock);
 
@@ -351,10 +359,17 @@ int handle_tfs_remove_box(client_t *client) {
 
     remove_by_value(&boxes, get_box(client->box_name), compare_box_names);
 
-    client->box_name = NULL;
+   //end all client sessions with this box
+    for (int i = 0; i < max_sessions; ++i) {
+        if (strcmp(clients[i].box_name, client->box_name) == 0) {
+            if (free_client_session(i) == -1) {
+                perror("Failed to free client");
+                return -1;
+            }
+        }
+    }
 
     safe_mutex_unlock(&boxes_lock);
-
     return 0;
 }
 
@@ -457,6 +472,7 @@ int handle_messages_from_publisher(client_t *client){
     message[MESSAGE_LENGTH] = '\0';
     ssize_t bytes_read;
     ssize_t bytes_written;
+
     while(true){
         //Check if it returns EOF
         bytes_read = try_read(client->client_pipe, &opcode, sizeof(uint8_t));
@@ -465,6 +481,7 @@ int handle_messages_from_publisher(client_t *client){
             return 0;
         } else if (bytes_read < 0){ //Error
             printf("Failed to read from pipe %d\n", client->client_pipe);
+            safe_close(client->client_pipe);
             return -1;
         }
 
@@ -476,12 +493,12 @@ int handle_messages_from_publisher(client_t *client){
         if(bytes_written < 0){
             printf("Failed to write to box %s in tfs\n", box->box_name);
             tfs_close(fhandle);
-           
+            safe_close(client->client_pipe);
             return -1;
         } else if(bytes_written < strlen(message) + 1){
             printf("Box %s is full\n", box->box_name);
+            safe_close(client->client_pipe);
             tfs_close(fhandle);
-          
             return -1;
         }
         box->box_size += bytes_written;
