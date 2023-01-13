@@ -6,6 +6,7 @@
 
 int message_count = 0;
 int pipe_fd;
+void sigint_handler(int sig);
 
 int main(int argc, char **argv) {
   
@@ -49,35 +50,45 @@ int main(int argc, char **argv) {
     }
 
     uint8_t op_code;
-    char* message[MESSAGE_LENGTH + 1];      //The message has max 255 chars + a '\0' at the end
-    size_t len = MESSAGE_LENGTH; 
+    char message[MESSAGE_LENGTH + 1];      //The message has max 255 chars + a '\0' at the end
+
     
     while(true){
         //Each message from the pipe is a new line
         read_pipe(pipe_fd, &op_code, sizeof(uint8_t));
         read_pipe(pipe_fd, message, MESSAGE_LENGTH*sizeof(char));
         message_count++;
-        fprintf(stdout, "%s\n", message);
+        printf("%s\n", message);
     }
     return -1;
 }
 
 
 void sigint_handler(int sig) {
+    
     if (sig == SIGINT) {
-
+   
     fflush(stdout);
     
-    char *error_message = "Received SIGINT. Closing pipe and exiting...\n";
-    write(1, error_message, strlen(error_message) + 1);
+    char error_message[MESSAGE_LENGTH + 1] = "Received SIGINT. Closing pipe and exiting...\n";
+    ssize_t bytes_written = write(1, error_message, strlen(error_message) + 1);
     
     //close session
-    safe_close(pipe_fd);
+    if (close(pipe_fd) < 0) {
+        bytes_written = write(2, "Failed to close pipe\n", strlen("Failed to close pipe\n") + 1);
+        return;
+    }
+
     //print number of messages received
-    char *final_message = "Received ";
-    final_message = concat(final_message, int_to_string(message_count));
-    final_message = concat(final_message, " messages\n");
-    write(1, final_message, strlen(final_message) + 1);
+    char final_message[MESSAGE_LENGTH + 1] = "Received ";
+    char count[sizeof(int)];
+    sprintf(count,"%d",message_count);
+    strcat(final_message, count);
+    strcat(final_message, " messages\n");
+    bytes_written = write(1, final_message, strlen(final_message) + 1);
+
+    //ignore bytes_written (to avoid unused variable warning)
+    (void) bytes_written;
 
     //restore default handler
     signal(sig, SIG_DFL);
@@ -85,14 +96,21 @@ void sigint_handler(int sig) {
     
     }
     else {
-
+        
         fflush(stderr);
-        char* error_message = "Received unexpected signal ";
-        error_message = concat(error_message, int_to_string(sig));
+        char error_message[MESSAGE_LENGTH + 1] = "Received unexpected signal ";
+        char unexpected_sig[sizeof(int)];
+        sprintf(unexpected_sig,"%d",sig);
+        strcat(error_message,unexpected_sig);
         
         //write error message to stderr
-        write(2, error_message, strlen(error_message) + 1);
-        safe_close(pipe_fd);
+        ssize_t bytes_written = write(2, error_message, strlen(error_message) + 1);
+        if (close(pipe_fd) < 0) {
+            bytes_written= write(2, "Failed to close pipe\n", strlen("Failed to close pipe\n") + 1);
+            return;
+        }
+        //ignore bytes_written (to avoid unused variable warning)
+        (void) bytes_written;
         //restore default handler
         signal(sig, SIG_DFL);
         raise(sig);

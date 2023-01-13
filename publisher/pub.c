@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
     char* buffer = parse_message(OP_CODE_REGIST_PUB, pipe_name, argv[3]);
 
     if (buffer == NULL) {
-        printf(stderr, "Failed to parse message\n");
+        fprintf(stderr, "Failed to parse message\n");
         return -1;
     }
 
