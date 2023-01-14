@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
             return -1;
         }
         char* box_name = argv[4];
-        char return_op_code;
+        uint8_t return_op_code;
         int32_t return_code;
         char error_message[MESSAGE_LENGTH + 1];
 
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
         }
 
 
-        write_pipe(register_pipefd, buffer, sizeof(char) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
+        write_pipe(register_pipefd, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
         
         printf("sent message to register pipe\n");
         
@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
         }
 
         printf("sent message to register pipe\n");
-        read_pipe(pipefd, &return_op_code, sizeof(char));
+        read_pipe(pipefd, &return_op_code, sizeof(uint8_t));
         printf("received op code from register pipe\n");
         
         read_pipe(pipefd, &return_code, sizeof(int32_t));

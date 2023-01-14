@@ -81,11 +81,11 @@ int main(int argc, char **argv) {
 
         
         ssize_t bytes_read;
-        char op_code;
+        uint8_t op_code;
 
         printf("Waiting for request\n");
 
-        bytes_read = try_read(server_pipe, &op_code, sizeof(char));
+        bytes_read = try_read(server_pipe, &op_code, sizeof(uint8_t));
       
 
         while (bytes_read > 0) {
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
                 return -1;
             }
 
-            bytes_read = try_read(server_pipe, &op_code, sizeof(char));
+            bytes_read = try_read(server_pipe, &op_code, sizeof(uint8_t));
           
         }
 
@@ -343,7 +343,7 @@ void print_request (request_t* request) {
     printf("Box name: %s\n", request->box_name);
 }
 
-int parser(char op_code_char) {
+int parser(uint8_t op_code) {
     
     request_t* request = (request_t*) malloc(sizeof(request_t));
     
@@ -351,20 +351,14 @@ int parser(char op_code_char) {
         perror("Failed to allocate memory");
         return -1;
     }
-    //convert op_code to uint8_t
-    uint8_t op_code = (uint8_t) op_code_char;
     //check if op_code is valid
     if(op_code > 7){
         printf("Invalid op_code\n");
         return -1;
     }
-
     request->opcode = op_code;
-
     char buffer[CLIENT_NAMED_PIPE_PATH_LENGTH];
-
     read_pipe(server_pipe, buffer, sizeof(buffer));
-
     strncpy(request->client_pipename, buffer, sizeof(buffer) + 1);
 
     if(op_code != OP_CODE_LIST_BOXES){
@@ -372,7 +366,6 @@ int parser(char op_code_char) {
         read_pipe(server_pipe, buffer2, sizeof(buffer2));
         strncpy(request->box_name, buffer2, sizeof(buffer2) + 1);
     }
-
    
     //Sends request to the queue to wait to be popped by a client session
     if(pcq_enqueue(&pc_queue, request) == -1){
