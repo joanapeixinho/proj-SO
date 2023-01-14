@@ -11,7 +11,8 @@ static char *pipename;
 static pc_queue_t pc_queue;
 
 static client_t *clients;
-static node_t *boxes;
+static box_t boxes [MAX_BOXES];
+static bool free_boxes [MAX_BOXES];
 static pthread_mutex_t boxes_lock;
 
 static bool *free_clients;
@@ -162,8 +163,13 @@ int mbroker_init() {
         printf("Failed to initialize boxes_lock\n");
         return -1;
     }
+
+    for (int i = 0; i < MAX_BOXES; ++i) {
+        free_boxes[i] = true; // all boxes are free in the beginning
+    }
+
     num_boxes = 0;
-    boxes = NULL;
+    
     return 0;
 }
 
@@ -273,18 +279,8 @@ int handle_tfs_register(client_t *client) {
     return -1;
 }
 
-box_t* get_box(char *box_name) {
-    //get box from linkedlist using get_data_by_value
-    box_t *box = (box_t *)get_data_by_value(boxes, box_name, compare_box_names);
-    //return box
-    return box;
-}
 
-int compare_box_names(void* node, void *box_name) {
-    node_t* new_node = (node_t *)node;
-    box_t *box = (box_t *)new_node->data;
-    return strcmp(box->box_name, box_name);
-}
+
 
 int free_client_session(int session_id) {
     safe_mutex_lock(&free_clients_lock);
@@ -328,7 +324,6 @@ void close_server(int exit_code) {
     pcq_destroy(&pc_queue);
     free(clients);
     free(free_clients);
-    free(boxes);
     pthread_mutex_destroy(&boxes_lock);
     pthread_mutex_destroy(&free_clients_lock);
     exit(exit_code);
@@ -392,7 +387,36 @@ int parser(uint8_t op_code) {
     return 0;
 } 
 
+int remove_box (box_t *box) {
+    
+    for(int i = 0; i < MAX_BOXES; i++){
+        if(strcmp(boxes[i].box_name, box->box_name) == 0){
+            free_boxes[i] = true;
+            tfs_unlink(boxes[i].box_name);
+            return 0;
+        }
+    }
+    return -1;
+}
 
+int get_free_box() {
+    for (int i = 0; i < MAX_BOXES; ++i) {
+        if (free_boxes[i] == true) {
+            free_boxes[i] = false;
+            return i;
+        }
+    }
+    return -1;
+}
+
+int get_box(char *box_name) {
+    for (int i = 0; i < MAX_BOXES; ++i) {
+        if (strcmp(boxes[i].box_name, box_name) == 0) {
+            return &boxes[i];
+        }
+    }
+    return NULL;
+}
 
 int handle_tfs_remove_box(client_t *client) {
 
@@ -409,7 +433,7 @@ int handle_tfs_remove_box(client_t *client) {
         return -1;
     }
 
-    remove_by_value(boxes, get_box(client->box_name), compare_box_names);
+    remove_box(get_box(client->box_name));
 
    //end all client sessions with this box
     for (int i = 0; i < max_sessions; ++i) {
@@ -441,24 +465,23 @@ int handle_tfs_list_boxes (client_t *client) {
     
     char buffer[sizeof(uint8_t) * 2 + BOX_NAME_LENGTH + sizeof(uint64_t) * 3]; 
     uint8_t last = 0;
+    int i = 0;
     
-    while (boxes != NULL) {
-        box_t *box = boxes->data;
+    while (i < num_boxes) {
+        box_t box = boxes[i];
         memcpy(buffer, &client->opcode, sizeof(uint8_t));
         
-        if (boxes->next == NULL) {
+        if (i == num_boxes - 1) {
             last = 1;
         }
 
         memcpy(buffer + sizeof(uint8_t),&last, sizeof(uint8_t));
-        memcpy(buffer + sizeof(uint8_t)*2, &box->box_name, sizeof(char)*BOX_NAME_LENGTH);
-        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH, &box->box_size, sizeof(uint64_t));
-        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t), &box->n_publishers, sizeof(uint64_t));
-        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t)*2, &box->n_subscribers, sizeof(uint64_t));
+        memcpy(buffer + sizeof(uint8_t)*2, &box.box_name, sizeof(char)*BOX_NAME_LENGTH);
+        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH, &box.box_size, sizeof(uint64_t));
+        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t), &box.n_publishers, sizeof(uint64_t));
+        memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t)*2, &box.n_subscribers, sizeof(uint64_t));
         write_pipe(client_pipe, buffer, sizeof(uint8_t) * 2 + BOX_NAME_LENGTH + sizeof(uint64_t) * 3);
-        
-    
-        boxes = boxes->next;
+        i++;
     }
     //close client pipe
     safe_close(client_pipe);
@@ -505,6 +528,12 @@ int handle_tfs_create_box(client_t *client) {
     safe_close(client->client_pipe);
     return return_code;
 }
+void print_box (box_t *box) {
+    printf("Box name: %s\n", box->box_name);
+    printf("Box size: %lu\n", box->box_size);
+    printf("Number of publishers: %lu\n", box->n_publishers);
+    printf("Number of subscribers: %lu\n", box->n_subscribers);
+}
 
 int create_box(char * box_name) {
     
@@ -517,22 +546,36 @@ int create_box(char * box_name) {
     tfs_close(fhandle);
     
     box_t *tmp_box = (box_t *) malloc(sizeof(box_t));
+
+
     if (tmp_box == NULL) {
         return -1;
     }
 
-    strcpy(tmp_box->box_name, box_name);
+    //put name in box
+    memcpy(tmp_box->box_name, box_name, BOX_NAME_LENGTH+1);
+    tmp_box->box_name[BOX_NAME_LENGTH] = '\0';
     tmp_box->box_size = 0;
     tmp_box->n_publishers = 0;
     tmp_box->n_subscribers = 0;
     //initiate threadlock
     pthread_mutex_init(&tmp_box->lock, NULL);
     pthread_cond_init(&tmp_box->cond, NULL);
+
+
     num_boxes++;
+
+    print_box(tmp_box);
+
     push(&boxes, tmp_box);
+
+    
+    print_box(boxes->data);
 
     return 0;
 }
+
+
 
 
 int handle_messages_from_publisher(client_t *client){
