@@ -90,13 +90,13 @@ int main(int argc, char **argv) {
         ssize_t bytes_read;
         uint8_t op_code;
 
-        printf("=== mbroker iniciated. Waiting for request ===\n");
+        printf("====== mbroker iniciated. Waiting for request ======\n");
 
         bytes_read = try_read(server_pipe, &op_code, sizeof(uint8_t));
       
 
         while (bytes_read > 0) {
-            printf("======= Waiting for request =======\n");
+            printf("=========== Waiting for request ===========\n");
             if (parser(op_code) == -1) {
                 printf("Failed to parse request\n");
                 close_server(EXIT_FAILURE);
@@ -213,6 +213,7 @@ void *client_session(void *client_in_array) {
             break;
         }
 
+        //TODO What is this even for??
         if (result != 0) {
             /* if there is an error during the handling of the message, discard
              * this session */
@@ -231,8 +232,10 @@ int handle_tfs_register(client_t *client) {
     //Open client pipe
     int client_pipe;
     if(client->opcode == OP_CODE_REGIST_PUB ){ // publisher
+        printf("Registering publisher ...\n");
         client_pipe = open(client->client_pipename, O_RDONLY);
     } else { // subscriber
+        printf("Registering subscriber ...\n");
         client_pipe = open(client->client_pipename, O_WRONLY);
     }
 
@@ -266,7 +269,8 @@ int handle_tfs_register(client_t *client) {
         printf("Registered subscriber %s for box %s\n",client->client_pipename, client->box_name);
         return handle_messages_to_subscriber(client);
     }
-    return 0;
+
+    return -1;
 }
 
 box_t* get_box(char *box_name) {
@@ -473,17 +477,17 @@ int handle_tfs_create_box(client_t *client) {
         return_code = -1;
     }
 
-    if (num_boxes == MAX_BOXES) {
+    if (return_code == 0 && num_boxes == MAX_BOXES) {
         snprintf(error_msg, MESSAGE_LENGTH, "Reached max number of boxes\n");        
         return_code = -1;
     }
-
-    if (get_box(client->box_name) != NULL) {
+    printf(">>>>trying to get box: %s\n", client->box_name);
+    if (return_code == 0 && get_box(client->box_name) != NULL) {
         snprintf(error_msg, MESSAGE_LENGTH, "Box already exists\n");
         return_code = -1;
     }
-
-    if (create_box(client->box_name) < 0) {
+    printf(">>>>trying to Create box: %s\n", client->box_name);
+    if (return_code == 0 && create_box(client->box_name) < 0) {
         snprintf(error_msg, MESSAGE_LENGTH, "Failed to create box\n");
         return_code = -1;
     }

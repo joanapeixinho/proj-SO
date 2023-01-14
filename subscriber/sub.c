@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
     //Try to register the subscriber
     write_pipe(register_pipe_fd, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
     
-    if (unlink(pipe_name) < 0) {
+    if (unlink(pipe_name) < 0 && errno != ENOENT) {
         fprintf(stderr, "Failed to delete pipe %s\n", pipe_name);
         return -1;
     }
