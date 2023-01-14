@@ -67,7 +67,7 @@ int handle_messages_from_publisher(client_t *client);
 int handle_messages_to_subscriber(client_t *client);
 
 // parser functions
-int parser(char op_code);
+int parser(uint8_t op_code);
 int parse_box(client_t *client);
 int parse_list(client_t *client);
 

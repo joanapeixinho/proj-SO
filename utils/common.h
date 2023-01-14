@@ -60,7 +60,7 @@ ssize_t try_read(int fd, void *buf, size_t count);
  */
 ssize_t try_write(int fd, const void *buf, size_t count);
 
-char * parse_message(char opcode, char * pipename, char * box_name );
+char * parse_message(uint8_t opcode, char * pipename, char * box_name );
 
 void print_buffer(char * buffer, int size);
 

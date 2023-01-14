@@ -34,7 +34,14 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    if (tfs_init(NULL) != 0) {
+    tfs_params params = {
+        .max_inode_count = MAX_BOXES,
+        .max_block_count = 1024,
+        .max_open_files_count = MAX_BOXES,
+        .block_size = MESSAGE_LENGTH + 1,
+    };
+
+    if (tfs_init(&params) != 0) {
         printf("Failed to init tfs\n");
         return -1;
     }
@@ -82,22 +89,22 @@ int main(int argc, char **argv) {
 
         
         ssize_t bytes_read;
-        char op_code;
+        uint8_t op_code;
 
-        printf("Waiting for request\n");
+        printf("=== mbroker iniciated. Waiting for request ===\n");
 
-        bytes_read = try_read(server_pipe, &op_code, sizeof(char));
+        bytes_read = try_read(server_pipe, &op_code, sizeof(uint8_t));
       
 
         while (bytes_read > 0) {
-
+            printf("======= Waiting for request =======\n");
             if (parser(op_code) == -1) {
                 printf("Failed to parse request\n");
                 close_server(EXIT_FAILURE);
                 return -1;
             }
 
-            bytes_read = try_read(server_pipe, &op_code, sizeof(char));
+            bytes_read = try_read(server_pipe, &op_code, sizeof(uint8_t));
           
         }
 
@@ -197,12 +204,15 @@ void *client_session(void *client_in_array) {
             break;
         case OP_CODE_CREATE_BOX:
             result = handle_tfs_create_box(client);
+            printf("Created box: %s\n", client->box_name);
             break;
         case OP_CODE_REMOVE_BOX:
             result = handle_tfs_remove_box(client);
+            printf("Removed box: %s\n", client->box_name);
             break;
         case OP_CODE_LIST_BOXES:
             result = handle_tfs_list_boxes(client);
+            printf("List boxes handled for manager: %s\n", client->client_pipename);
             break;
        
         default:
@@ -255,9 +265,11 @@ int handle_tfs_register(client_t *client) {
             return -1;
         }
         client->box->n_publishers++;
+        printf("Registered publisher %s for box %s\n",client->client_pipename, client->box_name);
         return handle_messages_from_publisher(client);
     } else {
         client->box->n_subscribers++;
+        printf("Registered subscriber %s for box %s\n",client->client_pipename, client->box_name);
         return handle_messages_to_subscriber(client);
     }
     return 0;
@@ -338,7 +350,7 @@ void print_request (request_t* request) {
     printf("Box name: %s\n", request->box_name);
 }
 
-int parser(char op_code_char) {
+int parser(uint8_t op_code) {
     
     request_t* request = (request_t*) malloc(sizeof(request_t));
     
@@ -346,20 +358,14 @@ int parser(char op_code_char) {
         perror("Failed to allocate memory");
         return -1;
     }
-    //convert op_code to uint8_t
-    uint8_t op_code = (uint8_t) op_code_char;
     //check if op_code is valid
     if(op_code > 7){
         printf("Invalid op_code\n");
         return -1;
     }
-
     request->opcode = op_code;
-
     char buffer[CLIENT_NAMED_PIPE_PATH_LENGTH];
-
     read_pipe(server_pipe, buffer, sizeof(buffer));
-
     strncpy(request->client_pipename, buffer, sizeof(buffer) + 1);
 
     if(op_code != OP_CODE_LIST_BOXES){
@@ -367,7 +373,6 @@ int parser(char op_code_char) {
         read_pipe(server_pipe, buffer2, sizeof(buffer2));
         strncpy(request->box_name, buffer2, sizeof(buffer2) + 1);
     }
-
    
     //Sends request to the queue to wait to be popped by a client session
     if(pcq_enqueue(&pc_queue, request) == -1){
@@ -481,8 +486,8 @@ int handle_tfs_list_boxes (client_t *client) {
 }
    
 int handle_tfs_create_box(client_t *client) {
-    printf("Starting handle_tfs_create_box...\n");
     safe_mutex_lock(&boxes_lock);
+    uint8_t opcode = OP_CODE_CREATE_BOX_ANSWER;
     int32_t return_code = 0;
     char error_msg[MESSAGE_LENGTH + 1] = {0};
 
@@ -495,33 +500,29 @@ int handle_tfs_create_box(client_t *client) {
         snprintf(error_msg, MESSAGE_LENGTH, "Reached max number of boxes\n");        
         return_code = -1;
     }
-    printf("Getting box %s ...\n", client->box_name);
+
     if (get_box(client->box_name) != NULL) {
         snprintf(error_msg, MESSAGE_LENGTH, "Box already exists\n");
         return_code = -1;
     }
 
-    printf("Creating box %s ...\n", client->box_name);
     if (create_box(client->box_name) < 0) {
         snprintf(error_msg, MESSAGE_LENGTH, "Failed to create box\n");
         return_code = -1;
     }
-    
-    if (return_code == -1) {
-        write_pipe(client->client_pipe, &return_code, sizeof(uint8_t));
-        write_pipe(client->client_pipe, error_msg, sizeof(char)*MESSAGE_LENGTH);
-        safe_close(client->client_pipe);
-        safe_mutex_unlock(&boxes_lock);
+    safe_mutex_unlock(&boxes_lock);
+
+    client->client_pipe = open(client->client_pipename, O_WRONLY);
+    if (client->client_pipe < 0) {
+        perror("Failed to open pipe");
         return -1;
     }
 
-    safe_mutex_unlock(&boxes_lock);
-    
-    write_pipe(client->client_pipe, &return_code, sizeof(uint8_t));
+    write_pipe(client->client_pipe, &opcode, sizeof(uint8_t));
+    write_pipe(client->client_pipe, &return_code, sizeof(uint32_t));
     write_pipe(client->client_pipe, error_msg, sizeof(char)*MESSAGE_LENGTH);
     safe_close(client->client_pipe);
-
-    return 0;
+    return return_code;
 }
 void print_box (box_t *box) {
     printf("Box name: %s\n", box->box_name);
@@ -669,7 +670,8 @@ int handle_messages_to_subscriber(client_t *client){
 int handle_messages_until_now(client_t *client){
     safe_mutex_lock(&client->box->lock);
 
-    char buffer[MESSAGE_LENGTH + 1];
+    //Have this size be the max nº of chars that can fit in a box (tfs file)
+    char buffer[MESSAGE_LENGTH + 1]; 
     char message[MESSAGE_LENGTH + 1];
     uint8_t opcode = OP_CODE_SUBSCRIBER;
     ssize_t bytes_read;
