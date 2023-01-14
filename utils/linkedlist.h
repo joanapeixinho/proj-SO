@@ -7,7 +7,7 @@ typedef struct node {
 } node_t;
 
 // Insert a new node at the front of the list
-void push(node_t* head,void* data);
+void push(node_t** head,void* data);
 //remove the first node with the given data
 void remove_by_value(node_t* head,void* data, int (*compare)(void*, void*));
 //get the first node with the given data
