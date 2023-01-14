@@ -54,6 +54,11 @@ int main(int argc, char **argv) {
     ssize_t bytes_written;
     while(true){
         //Each line from stdin is a message_text
+        if (feof(stdin)) {
+                safe_close(pipe_fd);
+                printf("EOF reached. Exiting ...\n");
+                return 0;
+        }
         memset(message_text,0,MESSAGE_LENGTH*sizeof(char)); 
         
         if (getline(&message_text, &len, stdin) < 0) {
@@ -61,11 +66,6 @@ int main(int argc, char **argv) {
            
         }
 
-        if (feof(stdin)) {
-                safe_close(pipe_fd);
-                printf("EOF reached. Exiting ...\n");
-                return 0;
-        }
       
         bytes_written =  try_write(pipe_fd, message, sizeof(uint8_t) + MESSAGE_LENGTH*sizeof(char));
         if(bytes_written < 0){ //An error occurred during writing

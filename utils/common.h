@@ -20,6 +20,7 @@
 #define ERROR_MESSAGE_LENGTH (1024)
 #define MESSAGE_LENGTH (1023)
 #define MAX_BOXES (64) //max number of boxes == max files of file system
+#define BOX_SIZE (16384) //max size of a box == max size of a file
 
 
 /* operation codes */

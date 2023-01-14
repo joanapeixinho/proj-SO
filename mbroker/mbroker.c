@@ -11,7 +11,7 @@ static char *pipename;
 static pc_queue_t pc_queue;
 
 static client_t *clients;
-static box_t boxes [MAX_BOXES];
+static box_t boxes[MAX_BOXES];
 static bool free_boxes [MAX_BOXES];
 static pthread_mutex_t boxes_lock;
 
@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
         .max_inode_count = MAX_BOXES,
         .max_block_count = 1024,
         .max_open_files_count = MAX_BOXES,
-        .block_size = MESSAGE_LENGTH + 1,
+        .block_size = BOX_SIZE,
     };
 
     if (tfs_init(&params) != 0) {
@@ -262,7 +262,7 @@ int handle_tfs_register(client_t *client) {
 
     //Check if the box already has a publisher
     if(client->opcode == OP_CODE_REGIST_PUB){
-        if(box->n_publishers == 1){
+        if(client->box->n_publishers == 1){
             printf("Box %s already has a publisher\n", client->box_name);
             safe_close(client_pipe);
             return -1;
@@ -409,7 +409,7 @@ int get_free_box() {
     return -1;
 }
 
-int get_box(char *box_name) {
+box_t* get_box(char *box_name) {
     for (int i = 0; i < MAX_BOXES; ++i) {
         if (strcmp(boxes[i].box_name, box_name) == 0) {
             return &boxes[i];
@@ -567,10 +567,12 @@ int create_box(char * box_name) {
 
     print_box(tmp_box);
 
-    push(&boxes, tmp_box);
-
-    
-    print_box(boxes->data);
+    int box_id = get_free_box();
+    if(box_id == -1){
+        printf("Can't create box: Max boxes already reached.\n");
+        return -1;
+    }
+    boxes[box_id] = *tmp_box;
 
     return 0;
 }
@@ -598,7 +600,7 @@ int handle_messages_from_publisher(client_t *client){
         }
 
         read_pipe(client->client_pipe, &message, MESSAGE_LENGTH);
-        box_t* box = get_box(client->box_name);
+        box_t* box = client->box;
         safe_mutex_lock(&box->lock);
         int fhandle = tfs_open(box->box_name, TFS_O_APPEND);
         bytes_written = tfs_write(fhandle, message, strlen(message) + 1);
@@ -629,7 +631,7 @@ int handle_messages_to_subscriber(client_t *client){
     uint8_t opcode = OP_CODE_SUBSCRIBER;
     ssize_t bytes_read;
     ssize_t bytes_written;
-    box_t* box = get_box(client->box_name);
+    box_t* box = client->box;
 
     //Read each message from box and send to client
     //each message is terminated by '\0'
@@ -675,7 +677,7 @@ int handle_messages_until_now(client_t *client){
     safe_mutex_lock(&client->box->lock);
 
     //Have this size be the max nº of chars that can fit in a box (tfs file)
-    char buffer[MESSAGE_LENGTH + 1]; 
+    char buffer[BOX_SIZE]; 
     char message[MESSAGE_LENGTH + 1];
     uint8_t opcode = OP_CODE_SUBSCRIBER;
     ssize_t bytes_read;
