@@ -453,6 +453,7 @@ int handle_tfs_list_boxes (client_t *client) {
 int handle_tfs_create_box(client_t *client) {
     printf("Starting handle_tfs_create_box...\n");
     safe_mutex_lock(&boxes_lock);
+    uint8_t opcode = OP_CODE_CREATE_BOX_ANSWER;
     int32_t return_code = 0;
     char error_msg[MESSAGE_LENGTH + 1] = {0};
 
@@ -476,22 +477,21 @@ int handle_tfs_create_box(client_t *client) {
         snprintf(error_msg, MESSAGE_LENGTH, "Failed to create box\n");
         return_code = -1;
     }
-    
-    if (return_code == -1) {
-        write_pipe(client->client_pipe, &return_code, sizeof(uint8_t));
-        write_pipe(client->client_pipe, error_msg, sizeof(char)*MESSAGE_LENGTH);
-        safe_close(client->client_pipe);
-        safe_mutex_unlock(&boxes_lock);
+    safe_mutex_unlock(&boxes_lock);
+
+    printf("Writing response to create %s box...\n", client->box_name);
+    client->client_pipe = open(client->client_pipename, O_WRONLY);
+    if (client->client_pipe < 0) {
+        perror("Failed to open pipe");
         return -1;
     }
 
-    safe_mutex_unlock(&boxes_lock);
-    
-    write_pipe(client->client_pipe, &return_code, sizeof(uint8_t));
+    write_pipe(client->client_pipe, &opcode, sizeof(uint8_t));
+    write_pipe(client->client_pipe, &return_code, sizeof(uint32_t));
     write_pipe(client->client_pipe, error_msg, sizeof(char)*MESSAGE_LENGTH);
     safe_close(client->client_pipe);
-
-    return 0;
+    printf("Finished writing response to create %s box\n", client->box_name);
+    return return_code;
 }
 
 int create_box(char * box_name) {
