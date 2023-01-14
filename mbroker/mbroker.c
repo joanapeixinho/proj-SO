@@ -258,11 +258,9 @@ int handle_tfs_register(client_t *client) {
 }
 
 box_t* get_box(char *box_name) {
-    safe_mutex_lock(&boxes_lock);
     //get box from linkedlist using get_data_by_value
     box_t *box = (box_t *)get_data_by_value(boxes, box_name, compare_box_names);
     //return box
-    safe_mutex_unlock(&boxes_lock);
     return box;
 }
 
@@ -464,7 +462,7 @@ int handle_tfs_create_box(client_t *client) {
     safe_mutex_lock(&boxes_lock);
     int32_t return_code = 0;
     char error_msg[MESSAGE_LENGTH + 1] = {0};
-    
+
     if (client->box_name == NULL) {
         snprintf(error_msg, MESSAGE_LENGTH, "Box name is null\n");
         return_code = -1;
@@ -508,7 +506,6 @@ int create_box(char * box_name) {
     int fhandle = tfs_open(box_name, TFS_O_CREAT);
     
     if (fhandle < 0) {
-        perror("Failed to create box in tfs\n");
         return -1;
     }
 
@@ -516,7 +513,6 @@ int create_box(char * box_name) {
     
     box_t *tmp_box = (box_t *) malloc(sizeof(box_t));
     if (tmp_box == NULL) {
-        perror("Failed to allocate memory for box\n");
         return -1;
     }
 

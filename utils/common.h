@@ -85,10 +85,10 @@ void print_buffer(char * buffer, int size);
     }
 
 #define safe_mutex_lock(mutex)\
-    ALWAYS_ASSERT(pthread_mutex_lock(mutex) != 0, "Failed to lock mutex %p", mutex)
+    ALWAYS_ASSERT(pthread_mutex_lock(mutex) == 0, "Failed to lock mutex %p", mutex)
                                                                 
 
 #define safe_mutex_unlock(mutex)\
-    ALWAYS_ASSERT(pthread_mutex_unlock(mutex) != 0, "Failed to unlock mutex %p", mutex)
+    ALWAYS_ASSERT(pthread_mutex_unlock(mutex) == 0, "Failed to unlock mutex %p", mutex)
 
 #endif /* COMMON_H */
