@@ -3,12 +3,12 @@
 #include "linkedlist.h"
 
 
-void push(node_t* head, void* data) {
+void push(node_t** head, void* data) {
     struct node* new_node = (struct node*) malloc(sizeof(struct node));
     void *new_data = malloc(sizeof(data));
     new_node->data = new_data;
-    new_node->next = head;
-    head = new_node;
+    new_node->next = *head;
+    *head = new_node;
 }
 
 void* get_data_by_value(node_t* head,void* data, int (*compare)(void*, void*)) {

@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     
     pipename = argv[1];
 
-    if (tfs_unlink(pipename) == -1 ) {
+    if (unlink(pipename) == -1 ) {
         printf("Failed to unlink pipe %s\n", pipename);
         return -1;
     }
@@ -104,8 +104,17 @@ int main(int argc, char **argv) {
 int mbroker_init() {
     clients =   (client_t*) malloc(max_sessions * sizeof(client_t));
     free_clients = (bool*) malloc(max_sessions * sizeof(bool));
+    
+    if (free_clients == NULL) {
+        perror("Failed to allocate memory for free_clients");
+        free(clients);
+        return -1;
+    }
 
     if( pcq_create(&pc_queue, max_sessions) != 0 ) {
+        free(clients);
+        free(free_clients);
+        perror("Failed to create producer-consumer queue");
         return -1;
     }
 
@@ -113,12 +122,31 @@ int mbroker_init() {
         clients[i].session_id = i;
         if (pthread_create(&clients[i].thread_id, NULL, client_session,
                            &clients[i]) != 0) {
+            printf("Failed to create thread for client %d", i);
+            free(clients);
+            free(free_clients);
+            pcq_destroy(&pc_queue);
             return -1;
         }
         free_clients[i] = true; // all clients are free in the beginning
     }
-    pthread_mutex_init(&free_clients_lock, NULL);
-    pthread_mutex_init(&boxes_lock, NULL);
+    if (pthread_mutex_init(&free_clients_lock, NULL) != 0) {
+        free(clients);
+        free(free_clients);
+        pcq_destroy(&pc_queue);
+        printf("Failed to initialize free_clients_lock\n");
+        return -1;
+    }
+    if (pthread_mutex_init(&boxes_lock, NULL) != 0) {
+        free(clients);
+        free(free_clients);
+        pcq_destroy(&pc_queue);
+        pthread_mutex_destroy(&free_clients_lock);
+        printf("Failed to initialize boxes_lock\n");
+        return -1;
+    }
+    num_boxes = 0;
+    boxes = NULL;
     return 0;
 }
 
@@ -261,13 +289,15 @@ int get_free_client_session() {
 void close_server(int exit_code) {
     for (int i = 0; i < max_sessions; ++i) {
         if (free_client(i) == -1) {
-            perror("Failed to free client");
             exit(EXIT_FAILURE);
         }
     }
     pcq_destroy(&pc_queue);
     free(clients);
     free(free_clients);
+    free(boxes);
+    pthread_mutex_destroy(&boxes_lock);
+    pthread_mutex_destroy(&free_clients_lock);
     exit(exit_code);
 }
 
@@ -317,7 +347,7 @@ int handle_tfs_remove_box(client_t *client) {
     char error_msg[MESSAGE_LENGTH +1] = {0};
     //if box doesnt exist print error
     if (get_box(client->box_name) == NULL) {
-        strcpy(error_msg, "Box does not exist");
+        strcpy(error_msg, "Box does not exist\n");
         //send error response to pipe
         write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
         safe_close(client->client_pipe);
@@ -332,7 +362,7 @@ int handle_tfs_remove_box(client_t *client) {
         if (strcmp(clients[i].box_name, client->box_name) == 0) {
             if (free_client_session(i) == -1) {
                 //send error response to pipe
-                strcpy(error_msg, "Failed to free client");
+                strcpy(error_msg, "Failed to free client\n");
                 write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
                 safe_close(client->client_pipe);
                 safe_mutex_unlock(&boxes_lock);
@@ -388,7 +418,7 @@ int handle_tfs_create_box(client_t *client) {
     char error_msg[MESSAGE_LENGTH + 1] = {0};
     
     if (client->box_name == NULL) {
-        strcpy(error_msg, "Box name is null");
+        snprintf(error_msg, MESSAGE_LENGTH, "Box name is null");
         write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
         safe_close(client->client_pipe);
         safe_mutex_unlock(&boxes_lock);
@@ -396,15 +426,14 @@ int handle_tfs_create_box(client_t *client) {
     }
 
     if(num_boxes == MAX_BOXES) {
-        strcpy(error_msg, "Max boxes reached");
-        write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
+        snprintf(error_msg, MESSAGE_LENGTH, "Failed to create box");        write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
         safe_close(client->client_pipe);
         safe_mutex_unlock(&boxes_lock);
         return -1;
     }
 
     if (get_box(client->box_name) != NULL) {
-        strcpy(error_msg, "Box already exists");
+        snprintf(error_msg, MESSAGE_LENGTH, "Box already exists");
         write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
         safe_close(client->client_pipe);
         safe_mutex_unlock(&boxes_lock);
@@ -437,8 +466,12 @@ int create_box(char * box_name) {
     tfs_close(fhandle);
     
     box_t *tmp_box = (box_t *) malloc(sizeof(box_t));
+    if (tmp_box == NULL) {
+        perror("Failed to allocate memory for box\n");
+        return -1;
+    }
 
-    
+    strcpy(tmp_box->box_name, box_name);
     tmp_box->box_size = 0;
     tmp_box->n_publishers = 0;
     tmp_box->n_subscribers = 0;
@@ -446,7 +479,7 @@ int create_box(char * box_name) {
     pthread_mutex_init(&tmp_box->lock, NULL);
     pthread_cond_init(&tmp_box->cond, NULL);
     num_boxes++;
-    push(boxes, tmp_box);
+    push(&boxes, tmp_box);
 
     return 0;
 }
