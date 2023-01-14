@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     
     pipename = argv[1];
 
-    if (unlink(pipename) == -1 ) {
+    if (unlink(pipename) <0 && errno != ENOENT ) {
         printf("Failed to unlink pipe %s\n", pipename);
         return -1;
     }
@@ -55,6 +55,7 @@ int main(int argc, char **argv) {
         tfs_unlink(pipename);
         return -1;
     }
+
 
     for (;;) {
         /* Open and close a temporary pipe to avoid having active wait for another
@@ -76,16 +77,25 @@ int main(int argc, char **argv) {
             return -1;
         }
 
+        
         ssize_t bytes_read;
-        uint8_t op_code;
+        char op_code;
 
-        bytes_read = read(server_pipe, &op_code, sizeof(char));
+        printf("Waiting for request\n");
+
+        bytes_read = try_read(server_pipe, &op_code, sizeof(char));
+      
 
         while (bytes_read > 0) {
-            //Save request to queue
-            parser(op_code);
 
-            bytes_read = read(server_pipe, &op_code, sizeof(char));
+            if (parser(op_code) == -1) {
+                printf("Failed to parse request\n");
+                close_server(EXIT_FAILURE);
+                return -1;
+            }
+
+            bytes_read = try_read(server_pipe, &op_code, sizeof(char));
+          
         }
 
         if (bytes_read < 0) {
@@ -151,13 +161,22 @@ int mbroker_init() {
 void *client_session(void *client_in_array) {
     client_t *client = (client_t *)client_in_array;
     while (true) {
-
         request_t* request = (request_t*) pcq_dequeue(&pc_queue);
+        
+        if (request == NULL) {
+            printf("Failed to dequeue request\n");
+            return NULL;
+        }
         client->opcode = request->opcode;
+        printf("Received request %d from client %d\n", client->opcode, client->session_id);
+
         memcpy(client->client_pipename, request->client_pipename, CLIENT_NAMED_PIPE_PATH_LENGTH + 1);
+        printf("Client pipename: %s\n", client->client_pipename);
+
         if( request->opcode != OP_CODE_LIST_BOXES) {
             memcpy(client->box_name, request->box_name, BOX_NAME_LENGTH + 1);
         }
+        
         int result = 0;
 
         switch (client->opcode) { 
@@ -318,24 +337,52 @@ int free_client (int session_id) {
     return 0;
 }
 
-int parser(uint8_t op_code) {
+void print_request (request_t* request) {
+    printf("Opcode: %d\n", request->opcode);
+    printf("Client pipename: %s\n", request->client_pipename);
+    printf("Box name: %s\n", request->box_name);
+}
+
+int parser(char op_code_char) {
     
     request_t* request = (request_t*) malloc(sizeof(request_t));
-    request->opcode = op_code;
-    read_pipe(server_pipe, &request->client_pipename, sizeof(char)* CLIENT_NAMED_PIPE_PATH_LENGTH);
-    request->client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH] = '\0';
-    if(op_code != OP_CODE_LIST_BOXES){
-        read_pipe(server_pipe, &request->box_name, sizeof(char)* BOX_NAME_LENGTH);
-        request->box_name[BOX_NAME_LENGTH] = '\0';
+    
+    if (request == NULL) {
+        perror("Failed to allocate memory");
+        return -1;
     }
-    //Sends request to the queue to wait to be popped by a client session
-    if(pcq_enqueue(&pc_queue, &request) == -1){
-        printf("Failed to enqueue request\n");
+    //convert op_code to uint8_t
+    uint8_t op_code = (uint8_t) op_code_char;
+    //check if op_code is valid
+    if(op_code > 7){
+        printf("Invalid op_code\n");
         return -1;
     }
 
+    request->opcode = op_code;
+
+    char buffer[CLIENT_NAMED_PIPE_PATH_LENGTH];
+
+    read_pipe(server_pipe, buffer, sizeof(buffer));
+
+    strncpy(request->client_pipename, buffer, sizeof(buffer) + 1);
+
+    if(op_code != OP_CODE_LIST_BOXES){
+        char buffer2[BOX_NAME_LENGTH];
+        read_pipe(server_pipe, buffer2, sizeof(buffer2));
+        strncpy(request->box_name, buffer2, sizeof(buffer2) + 1);
+    }
+
+   
+    //Sends request to the queue to wait to be popped by a client session
+    if(pcq_enqueue(&pc_queue, request) == -1){
+        printf("Failed to enqueue request\n");
+        return -1;
+    } 
+    
     return 0;
-}
+} 
+
 
 
 int handle_tfs_remove_box(client_t *client) {
@@ -394,7 +441,7 @@ int handle_tfs_list_boxes (client_t *client) {
             last = 1;
         }
 
-        memcpy(buffer + sizeof(uint8_t),&last, sizeof(u_int8_t));
+        memcpy(buffer + sizeof(uint8_t),&last, sizeof(uint8_t));
         memcpy(buffer + sizeof(uint8_t)*2, &box->box_name, sizeof(char)*BOX_NAME_LENGTH);
         memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH, &box->box_size, sizeof(uint64_t));
         memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t), &box->n_publishers, sizeof(uint64_t));
@@ -413,42 +460,44 @@ int handle_tfs_list_boxes (client_t *client) {
 int handle_tfs_create_box(client_t *client) {
     
     safe_mutex_lock(&boxes_lock);
+    int32_t return_code = 0;
     char error_msg[MESSAGE_LENGTH + 1] = {0};
     
     if (client->box_name == NULL) {
-        snprintf(error_msg, MESSAGE_LENGTH, "Box name is null");
-        write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
-        safe_close(client->client_pipe);
-        safe_mutex_unlock(&boxes_lock);
-        return -1;
+        snprintf(error_msg, MESSAGE_LENGTH, "Box name is null\n");
+        return_code = -1;
     }
 
-    if(num_boxes == MAX_BOXES) {
-        snprintf(error_msg, MESSAGE_LENGTH, "Failed to create box");        write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
-        safe_close(client->client_pipe);
-        safe_mutex_unlock(&boxes_lock);
-        return -1;
+    if (num_boxes == MAX_BOXES) {
+        snprintf(error_msg, MESSAGE_LENGTH, "Reached max number of boxes\n");        
+        return_code = -1;
     }
 
     if (get_box(client->box_name) != NULL) {
-        snprintf(error_msg, MESSAGE_LENGTH, "Box already exists");
-        write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
-        safe_close(client->client_pipe);
-        safe_mutex_unlock(&boxes_lock);
-        return -1;
+        snprintf(error_msg, MESSAGE_LENGTH, "Box already exists\n");
+        return_code = -1;
     }
 
 
     if (create_box(client->box_name) < 0) {
-        strcpy(error_msg, "Failed to create box");
-        write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
+        snprintf(error_msg, MESSAGE_LENGTH, "Failed to create box\n");
+        return_code = -1;
+    }
+    
+    if (return_code == -1) {
+        write_pipe(client->client_pipe, &return_code, sizeof(uint8_t));
+        write_pipe(client->client_pipe, error_msg, sizeof(char)*MESSAGE_LENGTH);
         safe_close(client->client_pipe);
         safe_mutex_unlock(&boxes_lock);
         return -1;
     }
-    
 
     safe_mutex_unlock(&boxes_lock);
+    
+    write_pipe(client->client_pipe, &return_code, sizeof(uint8_t));
+    write_pipe(client->client_pipe, error_msg, sizeof(char)*MESSAGE_LENGTH);
+    safe_close(client->client_pipe);
+
     return 0;
 }
 

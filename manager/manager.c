@@ -25,6 +25,7 @@ int main(int argc, char **argv) {
     char* pipe_name = argv[2];
     char* command = argv[3];
     char* buffer;
+    int pipefd;
 
     int register_pipefd = open(register_pipe_name, O_WRONLY);
     if (register_pipefd < 0) {
@@ -32,21 +33,28 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    int pipefd = open(pipe_name, O_RDONLY);
-    if (pipefd < 0) {
-        fprintf(stderr, "Error opening pipe %s for reading\n", pipe_name);
+    //create manager pipe
+    if (unlink (pipe_name) < 0 && errno != ENOENT) {
+        fprintf(stderr, "Error deleting pipe %s\n", pipe_name);
         return -1;
     }
+
+    if (mkfifo(pipe_name, 0777) < 0) {
+        fprintf(stderr, "Error creating pipe %s\n", pipe_name);
+        return -1;
+    }
+
+   
+
 
     if (strcmp(command, "create") == 0 || strcmp(command, "remove") == 0) {
         if (argc != 5) {
             print_usage();
             close(register_pipefd);
-            close(pipefd);
             return -1;
         }
         char* box_name = argv[4];
-        uint8_t return_op_code;
+        char return_op_code;
         int32_t return_code;
         char error_message[MESSAGE_LENGTH + 1];
 
@@ -56,11 +64,36 @@ int main(int argc, char **argv) {
             buffer = parse_message(OP_CODE_REMOVE_BOX, pipe_name, box_name);
         }
        
-        write_pipe(register_pipefd, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
+
+        if (buffer == NULL) {
+            fprintf(stderr, "Error parsing message\n");
+            close(register_pipefd);
+            return -1;
+        }
+
+
+        write_pipe(register_pipefd, buffer, sizeof(char) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
         
-        read_pipe(pipefd, &return_op_code, sizeof(uint8_t));
+        printf("sent message to register pipe\n");
+        
+        pipefd = open(pipe_name, O_RDONLY);
+
+        printf("opened pipe\n");
+
+        if (pipefd < 0) {
+        fprintf(stderr, "Error opening pipe %s for reading\n", pipe_name);
+        return -1;
+        }
+
+        printf("sent message to register pipe\n");
+        read_pipe(pipefd, &return_op_code, sizeof(char));
+        printf("received op code from register pipe\n");
+        
         read_pipe(pipefd, &return_code, sizeof(int32_t));
+        printf("received return code from register pipe\n");
+
         read_pipe(pipefd, error_message, MESSAGE_LENGTH*sizeof(char));
+        printf("received error message from register pipe\n");
         error_message[MESSAGE_LENGTH] = '\0';
 
         if (return_code == 0) {
@@ -75,26 +108,30 @@ int main(int argc, char **argv) {
         if (argc != 4) {
             print_usage();
             close(register_pipefd);
-            close(pipefd);
+       
             return -1;
         }
         buffer = parse_message(OP_CODE_LIST_BOXES, pipe_name, NULL);
-        write_pipe(register_pipefd, buffer, sizeof(uint8_t) + CLIENT_NAMED_PIPE_PATH_LENGTH*sizeof(char));
+        write_pipe(register_pipefd, buffer, sizeof(char) + CLIENT_NAMED_PIPE_PATH_LENGTH*sizeof(char));
+        pipefd = open(pipe_name, O_RDONLY);
+        if (pipefd < 0) {
+            fprintf(stderr, "Error opening pipe %s for reading\n", pipe_name);
+            return -1;
+        }
         if (list_boxes(pipefd) == -1 ) {
             close(register_pipefd);
-            close(pipefd);
+        
             return -1;
         }
         return 0;
     } else {
         print_usage();
         close(register_pipefd);
-        close(pipefd);
         return -1;
     }
 
-    close(register_pipefd);
     close(pipefd);
+    close(register_pipefd);
     return -1;
 }
 

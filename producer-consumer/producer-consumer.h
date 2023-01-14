@@ -2,7 +2,7 @@
 #define __PRODUCER_CONSUMER_H__
 
 #include <pthread.h>
-#include "../mbroker/mbroker.h"
+#include "../utils/common.h"
 
 // IMPORTANT: do not change anything in this file
 //
@@ -10,7 +10,7 @@
 // implementation
 
 typedef struct {
-    void **pcq_buffer;
+    request_t **pcq_buffer;
     size_t pcq_capacity;
 
     pthread_mutex_t pcq_current_size_lock;

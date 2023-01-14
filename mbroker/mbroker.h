@@ -15,11 +15,7 @@
 #include "string.h"
 #include <errno.h>
 
-typedef struct {
-    uint8_t opcode;
-    char client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH + 1];
-    char box_name[BOX_NAME_LENGTH + 1];
-} request_t;
+
 
 
 /* box_t is the structure that is used to communicate between the broker and the
@@ -39,7 +35,7 @@ typedef struct {
 typedef struct client {
     uint8_t opcode; 
     int session_id;
-    char* box_name;
+    char box_name [BOX_NAME_LENGTH + 1];
     box_t *box;
     int box_fd; //file descriptor of the box (for subscribers)
     char client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH + 1];
@@ -71,7 +67,7 @@ int handle_messages_from_publisher(client_t *client);
 int handle_messages_to_subscriber(client_t *client);
 
 // parser functions
-int parser(uint8_t op_code);
+int parser(char op_code);
 int parse_box(client_t *client);
 int parse_list(client_t *client);
 

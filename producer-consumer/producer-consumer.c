@@ -10,12 +10,13 @@ int pcq_create(pc_queue_t *queue, size_t capacity){
     queue->pcq_tail = 0;
     request_t** buffer;
     
-    
-    if(( buffer = (request_t**) malloc(capacity * sizeof(request_t))) == NULL){
-        printf("Error allocating memory for the queue buffer");
+    buffer = (request_t**) malloc(capacity * sizeof(request_t*));
+    if (buffer == NULL) {
+        printf("Error: malloc failed in pcq_create");
         return -1;
     }
-    queue->pcq_buffer = (void **) buffer;
+    queue->pcq_buffer = buffer;
+    
 
     if(pthread_mutex_init(&queue->pcq_current_size_lock, NULL) != 0){
         free(queue->pcq_buffer);
@@ -89,8 +90,8 @@ int pcq_enqueue(pc_queue_t *queue, void *elem){
     while(queue->pcq_current_size == queue->pcq_capacity){
         pthread_cond_wait(&queue->pcq_pusher_condvar, &queue->pcq_pusher_condvar_lock);
     }
+    
     pthread_mutex_unlock(&queue->pcq_pusher_condvar_lock);
-
     pthread_mutex_lock(&queue->pcq_tail_lock);
     //Save element at the tail of the queue and increment tail
     queue->pcq_buffer[queue->pcq_tail] = elem;
@@ -98,11 +99,15 @@ int pcq_enqueue(pc_queue_t *queue, void *elem){
     pthread_mutex_unlock(&queue->pcq_tail_lock);
 
     pthread_mutex_lock(&queue->pcq_current_size_lock);
+    
     queue->pcq_current_size++;
+   
     pthread_mutex_unlock(&queue->pcq_current_size_lock);
-
+   
     pthread_mutex_lock(&queue->pcq_popper_condvar_lock);
+
     pthread_cond_signal(&queue->pcq_popper_condvar);
+  
     pthread_mutex_unlock(&queue->pcq_popper_condvar_lock);
 
     return 0;

@@ -20,9 +20,12 @@ ssize_t try_write(int fd, const void *buf, size_t count) {
 }
 
 //parse message from client
-char * parse_message(u_int8_t opcode, char * pipename, char * box_name ) {
+char * parse_message(char opcode, char * pipename, char * box_name ) {
     
-    char* buffer = (char* ) malloc(sizeof(uint8_t) + CLIENT_NAMED_PIPE_PATH_LENGTH + BOX_NAME_LENGTH);
+    char* buffer = (char* ) malloc(sizeof(char) + CLIENT_NAMED_PIPE_PATH_LENGTH + BOX_NAME_LENGTH + 3);
+    //fill buffer with zeros
+    memset(buffer, 0, sizeof(char) + CLIENT_NAMED_PIPE_PATH_LENGTH + BOX_NAME_LENGTH + 3);
+
     if (buffer == NULL) {
         printf("Failed to allocate memory\n");
         return NULL;
@@ -30,18 +33,19 @@ char * parse_message(u_int8_t opcode, char * pipename, char * box_name ) {
 
     char * tmp = buffer;
     
-    memcpy(tmp, &opcode, sizeof(uint8_t));
+    memcpy(tmp, &opcode, sizeof(char));
     tmp++;  
     
     //if pipename length is bigger than CLIENT_NAMED_PIPE_PATH_LENGTH, it will be truncated              
     
-    memcpy(tmp, pipename, CLIENT_NAMED_PIPE_PATH_LENGTH);
+    memcpy(tmp, pipename, strlen(pipename));
     tmp += CLIENT_NAMED_PIPE_PATH_LENGTH;   
     
     if (box_name != NULL) {
         //if box_name length is bigger than BOX_NAME_LENGTH, it will be truncated
-        memcpy(tmp, box_name, BOX_NAME_LENGTH);
+        memcpy(tmp, box_name, strlen(box_name));
     }
     
     return buffer;
 }
+

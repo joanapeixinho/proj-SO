@@ -43,6 +43,11 @@ typedef enum {
     TFS_O_APPEND = 0b100,
 } tfs_file_mode_t;
 
+typedef struct {
+    uint8_t opcode;
+    char client_pipename[CLIENT_NAMED_PIPE_PATH_LENGTH + 1];
+    char box_name[BOX_NAME_LENGTH + 1];
+} request_t;
 
 /*
  * Same as POSIX's read, but handles EINTR correctly.
@@ -55,7 +60,9 @@ ssize_t try_read(int fd, void *buf, size_t count);
  */
 ssize_t try_write(int fd, const void *buf, size_t count);
 
-char * parse_message(u_int8_t opcode, char * pipename, char * box_name );
+char * parse_message(char opcode, char * pipename, char * box_name );
+
+void print_buffer(char * buffer, int size);
 
 
 /* check if all the content was read from the pipe. */
