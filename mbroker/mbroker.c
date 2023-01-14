@@ -66,15 +66,17 @@ int main(int argc, char **argv) {
         int pipe_temp = open(pipename, O_RDONLY);
 
         if (pipe_temp < 0) {
+            if (errno == ENOENT) {
+                /* if pipe does not exist, means we've exited */
+                return 0;
+            }
             printf("Failed to open pipe %s\n", pipename);
-            close_server(  EXIT_FAILURE );
-            return -1;
+            close_server(EXIT_FAILURE);
         }
 
         if (close(pipe_temp) < 0) {
             printf("Failed to close pipe %s\n", pipename);
-            close_server( EXIT_FAILURE );
-            return -1;
+            close_server(EXIT_FAILURE);
         }
 
         
@@ -568,7 +570,6 @@ int handle_messages_from_publisher(client_t *client){
             return -1;
         }
         box->box_size += strlen(message) + 1;
-        box->new_message = 1;
         tfs_close(fhandle);
         //Signal subscribers
         pthread_cond_broadcast(&box->cond);
@@ -581,10 +582,10 @@ int handle_messages_from_publisher(client_t *client){
 //read messages from subscriber's box and send to client
 int handle_messages_to_subscriber(client_t *client){
     char message[MESSAGE_LENGTH + 1];
+    uint8_t opcode = OP_CODE_SUBSCRIBER;
     ssize_t bytes_read;
     ssize_t bytes_written;
     box_t* box = get_box(client->box_name);
-    int fhandle = tfs_open(box->box_name, TFS_O_APPEND);
 
     //Read each message from box and send to client
     //each message is terminated by '\0'
@@ -592,36 +593,74 @@ int handle_messages_to_subscriber(client_t *client){
     while(true){
         safe_mutex_lock(&box->lock);
 
-        //TODO: FIX NEW MESSAGE
-        while (box->new_message == 0) {
-
+        //Wait until there is more to read
+        while ((box->box_size - (uint64_t) client->offset) == 0) {
             pthread_cond_wait(&box->cond, &box->lock);
         }
         safe_mutex_unlock(&box->lock);
          
         memset(message, 0, MESSAGE_LENGTH);
-        bytes_read = tfs_read(fhandle, message, MESSAGE_LENGTH);
+        bytes_read = tfs_read(client->box_fd, message, MESSAGE_LENGTH);
         if(bytes_read == 0){ //EOF
             break;
         } else if (bytes_read < 0){ //Error
             printf("Failed to read from box %s in tfs\n", box->box_name);
-            tfs_close(fhandle);
+            tfs_close(client->box_fd);
             return -1;
         }
-
-        bytes_written = try_write(client->client_pipe, message , strlen(message)+1 );
+        write_pipe(client->client_pipe, &opcode, sizeof(uint8_t));
+        bytes_written = try_write(client->client_pipe, message , MESSAGE_LENGTH );
 
         if(bytes_written < 0){
             printf("Failed to write to pipe %d\n", client->client_pipe);
-            tfs_close(fhandle);
+            tfs_close(client->box_fd);
             safe_close(client->client_pipe);
             return -1;
-        } else if(bytes_written < bytes_read){
+        } else if(bytes_written < MESSAGE_LENGTH){
             printf("Failed to write to pipe %d\n", client->client_pipe);
-            tfs_close(fhandle);
+            tfs_close(client->box_fd);
             safe_close(client->client_pipe);
             return -1;
         }
+        client->offset += bytes_read; //It's supposed to be equal to bytes_written
     }
+    return 0;
+}
+
+int handle_messages_until_now(client_t *client){
+    safe_mutex_lock(&client->box->lock);
+
+    char buffer[MESSAGE_LENGTH + 1];
+    char message[MESSAGE_LENGTH + 1];
+    uint8_t opcode = OP_CODE_SUBSCRIBER;
+    ssize_t bytes_read;
+    ssize_t tmp_offset;
+    client->box_fd = tfs_open(client->box->box_name, TFS_O_APPEND);
+    while((client->box->box_size - (uint64_t) client->offset) > 0){
+
+        bytes_read = tfs_read(client->box_fd, buffer, MESSAGE_LENGTH);
+        if(bytes_read == 0){ //EOF
+            break;
+        } else if (bytes_read < 0){ //Error
+            printf("Failed to read from box %s in tfs\n", client->box->box_name);
+            tfs_close(client->box_fd);
+            safe_close(client->client_pipe);
+            return -1;
+        }
+
+        tmp_offset = 0;
+        while(tmp_offset < bytes_read){
+            memset(message, 0, MESSAGE_LENGTH + 1);
+            //Copy starting from the last '\0' character until the next '\0' character
+            strcpy(message, buffer + tmp_offset);
+
+            write_pipe(client->client_pipe, &opcode, sizeof(uint8_t));
+            write_pipe(client->client_pipe, message, MESSAGE_LENGTH);
+            tmp_offset += (ssize_t) strlen(message) + 1;
+        }
+
+        client->offset += bytes_read; 
+    }
+    safe_mutex_unlock(&client->box->lock);
     return 0;
 }

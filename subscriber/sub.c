@@ -57,8 +57,9 @@ int main(int argc, char **argv) {
         //Each message from the pipe is a new line
         read_pipe(pipe_fd, &op_code, sizeof(uint8_t));
         read_pipe(pipe_fd, message, MESSAGE_LENGTH*sizeof(char));
+        message[MESSAGE_LENGTH] = '\0';
         message_count++;
-        printf("%s\n", message);
+        fprintf(stdout, "%s\n", message);
     }
     return -1;
 }
