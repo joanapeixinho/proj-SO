@@ -460,7 +460,7 @@ int handle_tfs_list_boxes (client_t *client) {
 }
    
 int handle_tfs_create_box(client_t *client) {
-    
+    printf("Starting handle_tfs_create_box...\n");
     safe_mutex_lock(&boxes_lock);
     int32_t return_code = 0;
     char error_msg[MESSAGE_LENGTH + 1] = {0};
@@ -474,13 +474,13 @@ int handle_tfs_create_box(client_t *client) {
         snprintf(error_msg, MESSAGE_LENGTH, "Reached max number of boxes\n");        
         return_code = -1;
     }
-
+    printf("Getting box %s ...\n", client->box_name);
     if (get_box(client->box_name) != NULL) {
         snprintf(error_msg, MESSAGE_LENGTH, "Box already exists\n");
         return_code = -1;
     }
 
-
+    printf("Creating box %s ...\n", client->box_name);
     if (create_box(client->box_name) < 0) {
         snprintf(error_msg, MESSAGE_LENGTH, "Failed to create box\n");
         return_code = -1;

@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
         char error_message[MESSAGE_LENGTH + 1];
 
         if (strcmp(command, "create") == 0) {
-            buffer = parse_message(OP_CODE_CREATE_BOX_ANSWER, pipe_name, box_name);
+            buffer = parse_message(OP_CODE_CREATE_BOX, pipe_name, box_name);
         } else {
             buffer = parse_message(OP_CODE_REMOVE_BOX, pipe_name, box_name);
         }
