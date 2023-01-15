@@ -16,7 +16,7 @@
 
 #define PIPE_BUFFER_MAX_LEN (PIPE_BUF)
 #define CLIENT_NAMED_PIPE_PATH_LENGTH (255)
-#define BOX_NAME_LENGTH (31)
+#define BOX_NAME_LENGTH (31) // '/' + 31 chars + '\0'
 #define ERROR_MESSAGE_LENGTH (1024)
 #define MESSAGE_LENGTH (1023)
 #define MAX_BOXES (64) //max number of boxes == max files of file system

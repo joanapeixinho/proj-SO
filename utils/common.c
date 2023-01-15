@@ -41,7 +41,9 @@ char * parse_message(uint8_t opcode, char * pipename, char * box_name ) {
     tmp += CLIENT_NAMED_PIPE_PATH_LENGTH;   
     
     if (box_name != NULL) {
+        //int bar = '/';
         //if box_name length is bigger than BOX_NAME_LENGTH, it will be truncated
+        //memcpy(tmp, &bar, sizeof(char));
         memcpy(tmp, box_name, strlen(box_name));
     }
     
