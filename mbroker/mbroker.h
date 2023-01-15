@@ -52,6 +52,7 @@ void *client_session(void *client_in_array);
 int free_client(int session_id);
 int free_client_session( int session_id);
 int get_free_client();
+int finish_client_session(client_t *client);
 
 //handle functions
 int handle_tfs_register(client_t *client);
@@ -64,6 +65,7 @@ int handle_tfs_list_boxes_answer(client_t *client);
 int handle_tfs_write(client_t *client);
 int handle_messages_from_publisher(client_t *client);
 int handle_messages_to_subscriber(client_t *client);
+int handle_messages_until_now(client_t *client);
 
 // parser functions
 int parser(uint8_t op_code);

@@ -55,17 +55,22 @@ int main(int argc, char **argv) {
     while(true){
         //Each line from stdin is a message_text
         if (feof(stdin)) {
-                safe_close(pipe_fd);
-                printf("EOF reached. Exiting ...\n");
-                return 0;
+            safe_close(pipe_fd);
+            printf("EOF reached. Exiting ...\n");
+            return 0;
         }
         memset(message_text,0,MESSAGE_LENGTH*sizeof(char)); 
         
         if (getline(&message_text, &len, stdin) < 0) {
-            fprintf(stderr, "Failed to read from stdin\n");
-           
+            if (feof(stdin)) {
+                safe_close(pipe_fd);
+                printf("EOF reached. Exiting ...\n");
+                return 0;
+            } else{
+                fprintf(stderr, "Failed to read from stdin\n");
+            }  
         }
-
+        message_text[strlen(message_text)-1] = '\0'; //Remove the newline character
       
         bytes_written =  try_write(pipe_fd, message, sizeof(uint8_t) + MESSAGE_LENGTH*sizeof(char));
         if(bytes_written < 0){ //An error occurred during writing

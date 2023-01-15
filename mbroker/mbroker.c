@@ -62,6 +62,7 @@ int main(int argc, char **argv) {
     }
 
 
+    printf("====== mbroker iniciated. Waiting for request ======\n");
     for (;;) {
         /* Open and close a temporary pipe to avoid having active wait for another
          * process to open the pipe. The 'open' function blocks until the pipe
@@ -88,7 +89,6 @@ int main(int argc, char **argv) {
         ssize_t bytes_read;
         uint8_t op_code;
 
-        printf("====== mbroker iniciated. Waiting for request ======\n");
 
         bytes_read = try_read(server_pipe, &op_code, sizeof(uint8_t));
       
@@ -177,11 +177,11 @@ void *client_session(void *client_in_array) {
 
         case OP_CODE_REGIST_PUB:
             result = handle_tfs_register(client);
-            printf("Ended publisher session of pipe name: %s\n", client->client_pipename);
+            printf("Ended publisher session.\n");
             break;
         case OP_CODE_REGIST_SUB:
             result = handle_tfs_register(client);
-            printf("Ended subscriber session of pipe name: %s\n", client->client_pipename);
+            printf("Ended subscriber sessions.\n");
             break;
         case OP_CODE_CREATE_BOX:
             result = handle_tfs_create_box(client);
@@ -209,8 +209,6 @@ void *client_session(void *client_in_array) {
 }
 
 
-
-
 int handle_tfs_register(client_t *client) {
     //Open client pipe
     int client_pipe;
@@ -221,10 +219,10 @@ int handle_tfs_register(client_t *client) {
         printf("Registering subscriber ...\n");
         client_pipe = open(client->client_pipename, O_WRONLY);
     }
-
+    printf("Client pipe opened: %s\n", client->client_pipename);
     if (client_pipe < 0) {
-        printf("Failed to open pipe");
-        return -1;
+        printf("Failed to open pipe %s\n", client->client_pipename);
+        return -1; // Major error, close server
     }
 
     client->client_pipe = client_pipe;
@@ -234,7 +232,7 @@ int handle_tfs_register(client_t *client) {
     if(box == NULL){
         printf("Box %s does not exist\n", client->box_name);
         safe_close(client_pipe);
-        return -1;
+        return 0;
     }
     client->box = box;
 
@@ -242,8 +240,7 @@ int handle_tfs_register(client_t *client) {
     if(client->opcode == OP_CODE_REGIST_PUB){
         if(client->box->n_publishers == 1){
             printf("Box %s already has a publisher\n", client->box_name);
-            safe_close(client_pipe);
-            return -1;
+            return finish_client_session(client);
         }
         client->box->n_publishers++;
         printf("Registered publisher %s for box %s\n",client->client_pipename, client->box_name);
@@ -251,6 +248,9 @@ int handle_tfs_register(client_t *client) {
     } else {
         client->box->n_subscribers++;
         printf("Registered subscriber %s for box %s\n",client->client_pipename, client->box_name);
+        if(handle_messages_until_now(client) == -1){
+            return -1;
+        }
         return handle_messages_to_subscriber(client);
     }
 
@@ -570,7 +570,7 @@ int handle_messages_from_publisher(client_t *client){
     message[MESSAGE_LENGTH] = '\0';
     ssize_t bytes_read;
     ssize_t bytes_written;
-
+    printf("Starting to read from publisher pipe (stdin) %s\n", client->client_pipename);
     while(true){
         //Check if it returns EOF
         bytes_read = try_read(client->client_pipe, &opcode, sizeof(uint8_t));
@@ -611,6 +611,7 @@ int handle_messages_from_publisher(client_t *client){
             finish_client_session(client);
             return -1; //Close the server
         }
+        printf("=== Sent message to client %s: ===\n %s\n", client->client_pipename, message);
         safe_mutex_unlock(&box->lock);
     }
 
@@ -631,7 +632,6 @@ int handle_messages_to_subscriber(client_t *client){
 
     //Read each message from box and send to client
     //each message is terminated by '\0'
-
     while(true){
         safe_mutex_lock(&box->lock);
         //Wait until there is more to read
@@ -643,7 +643,7 @@ int handle_messages_to_subscriber(client_t *client){
             }
         }
         safe_mutex_unlock(&box->lock);
-         
+        
         memset(message, 0, MESSAGE_LENGTH);
         bytes_read = tfs_read(client->box_fd, message, MESSAGE_LENGTH);
         if(bytes_read == 0){ //EOF
@@ -684,7 +684,7 @@ int handle_messages_until_now(client_t *client){
     uint8_t opcode = OP_CODE_SUBSCRIBER;
     ssize_t bytes_read;
     ssize_t tmp_offset;
-    client->box_fd = tfs_open(client->box->box_name, TFS_O_APPEND);
+    client->box_fd = tfs_open(client->box_name, TFS_O_CREAT);
     if(client->box_fd < 0){
         printf("Failed to open box %s in tfs\n", client->box->box_name);
         finish_client_session(client);
@@ -692,7 +692,7 @@ int handle_messages_until_now(client_t *client){
     }
     while((client->box->box_size - (uint64_t) client->offset) > 0){
 
-        bytes_read = tfs_read(client->box_fd, buffer, MESSAGE_LENGTH);
+        bytes_read = tfs_read(client->box_fd, buffer, BOX_SIZE);
         if(bytes_read == 0){ //EOF
             break;
         } else if (bytes_read < 0){ //Error
@@ -710,15 +710,12 @@ int handle_messages_until_now(client_t *client){
             write_pipe(client->client_pipe, &opcode, sizeof(uint8_t));
             write_pipe(client->client_pipe, message, MESSAGE_LENGTH);
             tmp_offset += (ssize_t) strlen(message) + 1;
+
         }
 
         client->offset += bytes_read; 
     }
     safe_mutex_unlock(&client->box->lock);
 
-    if (finish_client_session(client) == -1) {
-        printf("Failed to finish client session\n");
-        return -1;
-    }
     return 0;
 }
