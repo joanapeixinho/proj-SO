@@ -141,6 +141,7 @@ int mbroker_init() {
         free_boxes[i] = true; // all boxes are free in the beginning
     }
     num_boxes = 0;
+    signal(SIGPIPE, SIG_IGN); // ignore SIGPIPE to treat the closed pipe
     return 0;
 }
 
@@ -385,9 +386,9 @@ int handle_tfs_remove_box(client_t *client) {
         return -1;
     }
 
-    client->client_pipe = pipe;
+    client->client_pipe = pipe; //manager pipe
 
-    // if box doesnt send error message to manager
+    // if box doesnt exist send error message to manager
     if (get_box(client->box_name) == NULL) {
         strcpy(error_msg, "Box does not exist");
         return_code = -1;
@@ -579,7 +580,7 @@ int handle_messages_from_publisher(client_t *client) {
     while (true) {
         // Check if it returns EOF
         bytes_read = try_read(client->client_pipe, &opcode, sizeof(uint8_t));
-        if (bytes_read == 0) { // EOF
+        if (bytes_read == 0 || (bytes_read < 0 && errno == EPIPE)) { // EOF
             finish_client_session(client);
             return 0;
         } else if (bytes_read < 0) { // Error
@@ -589,7 +590,7 @@ int handle_messages_from_publisher(client_t *client) {
         }
 
         bytes_read = try_read(client->client_pipe, message, MESSAGE_LENGTH);
-        if (bytes_read == 0) { // EOF
+        if (bytes_read == 0 || (bytes_read < 0 && errno == EPIPE)) { // EOF
             finish_client_session(client);
             return 0;
         } else if (bytes_read < 0) { // Error
@@ -668,7 +669,7 @@ int handle_messages_to_subscriber(client_t *client) {
         }
         bytes_written =
             try_write(client->client_pipe, &opcode, sizeof(uint8_t));
-        if (bytes_written == 0) {
+        if (bytes_written == 0 || (bytes_written < 0 && errno == EPIPE)) {
             printf("Subscriber pipe closed: %d\n", client->client_pipe);
             finish_client_session(client);
             return 0; // Safely end this session
@@ -680,7 +681,7 @@ int handle_messages_to_subscriber(client_t *client) {
 
         bytes_written = try_write(client->client_pipe, message, MESSAGE_LENGTH);
 
-        if (bytes_written == 0) {
+        if (bytes_written == 0 || (bytes_written < 0 && errno == EPIPE)) {
             printf("Subscriber pipe closed: %d\n", client->client_pipe);
             finish_client_session(client);
             return 0; // Safely end this session

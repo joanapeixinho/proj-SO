@@ -6,6 +6,7 @@
 #include "config.h"
 #include "fs/operations.h"
 #include "logging.h"
+#include <signal.h>
 #include "string.h"
 #include <errno.h>
 #include <fcntl.h>
