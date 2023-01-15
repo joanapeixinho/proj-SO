@@ -293,10 +293,11 @@ int finish_client_session(client_t *client) {
         return -1;
     }
 
+    
     if (client->box != NULL) {
-        if (client->opcode == OP_CODE_REGIST_PUB) {
+        if (client->opcode == OP_CODE_REGIST_PUB ) {
             client->box->n_publishers--;
-        } else if (client->opcode == OP_CODE_REGIST_SUB){
+        } else if (client->opcode == OP_CODE_REGIST_SUB ){
             client->box->n_subscribers--;
         }
     }
@@ -304,7 +305,7 @@ int finish_client_session(client_t *client) {
     client->client_pipename[0] = '\0';
     client->box = NULL;
     client->box_fd = -1;
-    client->client_pipe = -1;
+    
     return 0;
 }
    
@@ -577,7 +578,8 @@ int create_box(char * box_name) {
 
 
 
-int handle_messages_from_publisher(client_t *client){
+int handle_messages_from_publisher(client_t *client) {
+
     uint8_t opcode;
     char message[MESSAGE_LENGTH + 1];
     message[MESSAGE_LENGTH] = '\0';
@@ -596,7 +598,16 @@ int handle_messages_from_publisher(client_t *client){
             return -1;
         }
 
-        read_pipe(client->client_pipe, &message, MESSAGE_LENGTH);
+        bytes_read = try_read(client->client_pipe, message, MESSAGE_LENGTH);
+        if(bytes_read == 0){ //EOF 
+            finish_client_session(client);
+            return 0;
+        } else if (bytes_read < 0){ //Error
+            printf("Failed to read from pipe %s\n", client->client_pipename);
+            finish_client_session(client);
+            return -1;
+        }
+
         box_t* box = client->box;
 
         safe_mutex_lock(&box->lock);
@@ -631,7 +642,7 @@ int handle_messages_from_publisher(client_t *client){
         printf("Failed to finish client session\n");
         return -1;
     }
-    return -1;
+                                    return -1;
 }
 
 //read messages from subscriber's box and send to client

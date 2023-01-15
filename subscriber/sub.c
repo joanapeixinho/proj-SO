@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
     while(true) {
 
         bytes_read = try_read(pipe_fd, &op_code, sizeof(uint8_t));
+  
         if (bytes_read == 0) {
             fprintf(stderr, "Subscriber's pipe closed\n");
             return 0;
