@@ -135,6 +135,8 @@ int main(int argc, char **argv) {
     return -1;
 }
 
+//doesnt work when there's only one box
+
 int list_boxes (int pipefd) {
 
         uint8_t op_code;
@@ -145,16 +147,17 @@ int list_boxes (int pipefd) {
         while (last == 0) {
             
             read_pipe(pipefd, &op_code, sizeof(uint8_t));
-            if (op_code != OP_CODE_LIST_BOXES_ANSWER) {
+            if (op_code != OP_CODE_LIST_BOXES) {
                 fprintf(stderr, "ERROR: Unexpected operation code %d in list_boxes\n", op_code);
                 return -1;
             }
             read_pipe(pipefd,&last, sizeof(uint8_t));
-            if (count == 0 && last == 1 ){
-                fprintf(stdout, "NO BOXES FOUND\n");
-                return -1;
-            } 
+            
             read_pipe(pipefd, boxes[count].box_name, BOX_NAME_LENGTH*sizeof(char));
+           //if box name is empty then there are no more boxes
+            if (boxes[count].box_name[0] == '\0') {
+                fprintf(stdout, "NO BOXES FOUND\n");
+            }
             boxes[count].box_name[BOX_NAME_LENGTH] = '\0';
             read_pipe(pipefd, &boxes[count].box_size, sizeof(uint64_t));
             read_pipe(pipefd, &boxes[count].n_publishers, sizeof(uint64_t));

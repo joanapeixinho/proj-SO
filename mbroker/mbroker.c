@@ -15,9 +15,6 @@ static box_t boxes[MAX_BOXES];
 static bool free_boxes [MAX_BOXES];
 static pthread_mutex_t boxes_lock;
 
-static bool *free_clients;
-static pthread_mutex_t free_clients_lock;
-
 
 int main(int argc, char **argv) {
 
@@ -121,17 +118,9 @@ int main(int argc, char **argv) {
 
 int mbroker_init() {
     clients =   (client_t*) malloc(max_sessions * sizeof(client_t));
-    free_clients = (bool*) malloc(max_sessions * sizeof(bool));
-    
-    if (free_clients == NULL) {
-        perror("Failed to allocate memory for free_clients");
-        free(clients);
-        return -1;
-    }
 
     if( pcq_create(&pc_queue, max_sessions) != 0 ) {
         free(clients);
-        free(free_clients);
         perror("Failed to create producer-consumer queue");
         return -1;
     }
@@ -142,24 +131,14 @@ int mbroker_init() {
                            &clients[i]) != 0) {
             printf("Failed to create thread for client %d", i);
             free(clients);
-            free(free_clients);
             pcq_destroy(&pc_queue);
             return -1;
         }
-        free_clients[i] = true; // all clients are free in the beginning
     }
-    if (pthread_mutex_init(&free_clients_lock, NULL) != 0) {
-        free(clients);
-        free(free_clients);
-        pcq_destroy(&pc_queue);
-        printf("Failed to initialize free_clients_lock\n");
-        return -1;
-    }
+   
     if (pthread_mutex_init(&boxes_lock, NULL) != 0) {
         free(clients);
-        free(free_clients);
         pcq_destroy(&pc_queue);
-        pthread_mutex_destroy(&free_clients_lock);
         printf("Failed to initialize boxes_lock\n");
         return -1;
     }
@@ -225,12 +204,11 @@ void *client_session(void *client_in_array) {
         if (result != 0) {
             /* if there is an error during the handling of the message, discard
              * this session */
-            if (free_client_session(client->session_id) == -1) {
-                perror("Failed to free client");
-                close_server(EXIT_FAILURE);
-            }
+            printf("Error handling request %d from client %d\n", client->opcode, client->session_id);
+            close_server(EXIT_FAILURE);
         }
     }
+    return NULL;
 }
 
 
@@ -284,55 +262,21 @@ int handle_tfs_register(client_t *client) {
 
 
 
-int free_client_session(int session_id) {
-    safe_mutex_lock(&free_clients_lock);
-    //check if the client is already free
-    if (free_clients[session_id] == true) {
-        safe_mutex_unlock(&free_clients_lock);
-        return -1;
-    }
-    //free client session
-    free_clients[session_id] = true;
-    safe_mutex_unlock(&free_clients_lock);
-    return 0;
-}
 
-int is_client_free(int session_id) {
-    safe_mutex_lock(&free_clients_lock);
-    int result = free_clients[session_id];
-    safe_mutex_unlock(&free_clients_lock);
-    return result;
-}
 
-int get_free_client_session() {
-    safe_mutex_lock(&free_clients_lock);
-    for (int i = 0; i < max_sessions; ++i) {
-        if (free_clients[i] == true) {
-            free_clients[i] = false;
-            safe_mutex_unlock(&free_clients_lock);
-            return i;
-        }
-    }
-    safe_mutex_unlock(&free_clients_lock);
-    return -1;
-}
+
+
 
 void close_server(int exit_code) {
     for (int i = 0; i < max_sessions; ++i) {
-        if (free_client(i) == -1) {
             exit(EXIT_FAILURE);
-        }
     }
     pcq_destroy(&pc_queue);
     free(clients);
-    free(free_clients);
     pthread_mutex_destroy(&boxes_lock);
-    pthread_mutex_destroy(&free_clients_lock);
     exit(exit_code);
 }
-
-//destroy client 
-
+//destroy client session
 int free_client (int session_id) {
     client_t *client = &clients[session_id];
     if (pthread_join(client->thread_id, NULL) != 0) {
@@ -343,9 +287,12 @@ int free_client (int session_id) {
         perror("Failed to close pipe");
         return -1;
     }
-    if (free_client_session(client->session_id) == -1) {
-        perror("Failed to free client");
-        return -1;
+    if (client->box != NULL) {
+        if (client->opcode == OP_CODE_REGIST_PUB) {
+            client->box->n_publishers--;
+        } else if (client->opcode == OP_CODE_REGIST_SUB){
+            client->box->n_subscribers--;
+        }
     }
     return 0;
 }
@@ -390,11 +337,13 @@ int parser(uint8_t op_code) {
 } 
 
 int remove_box (box_t *box) {
-    
     for(int i = 0; i < MAX_BOXES; i++){
         if(strcmp(boxes[i].box_name, box->box_name) == 0){
             free_boxes[i] = true;
-            tfs_unlink(boxes[i].box_name);
+            if (tfs_unlink(boxes[i].box_name) == -1) {
+                perror("Failed to unlink box");
+                return -1;
+            }
             return 0;
         }
     }
@@ -435,19 +384,20 @@ int handle_tfs_remove_box(client_t *client) {
         return -1;
     }
 
-    remove_box(get_box(client->box_name));
+    if (remove_box(get_box(client->box_name)) == -1) {
+        strcpy(error_msg, "Failed to remove box\n");
+        write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
+        safe_close(client->client_pipe);
+        safe_mutex_unlock(&boxes_lock);
+        return -1;
+    }
 
    //end all client sessions with this box
     for (int i = 0; i < max_sessions; ++i) {
         if (strcmp(clients[i].box_name, client->box_name) == 0) {
-            if (free_client_session(i) == -1) {
-                //send error response to pipe
-                strcpy(error_msg, "Failed to free client\n");
-                write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
                 safe_close(client->client_pipe);
                 safe_mutex_unlock(&boxes_lock);
                 return -1;
-            }
         }
     }
 
@@ -467,6 +417,11 @@ int handle_tfs_list_boxes (client_t *client) {
     
     char buffer[sizeof(uint8_t) * 2 + BOX_NAME_LENGTH + sizeof(uint64_t) * 3]; 
     uint8_t last = 0;
+
+    if (num_boxes == 0) {
+        last = 1;
+    }
+
     int i = 0;
     
     while (i < num_boxes) {
