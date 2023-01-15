@@ -6,11 +6,11 @@
 #include "config.h"
 #include "fs/operations.h"
 #include "logging.h"
-#include <signal.h>
 #include "string.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>

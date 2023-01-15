@@ -386,7 +386,7 @@ int handle_tfs_remove_box(client_t *client) {
         return -1;
     }
 
-    client->client_pipe = pipe; //manager pipe
+    client->client_pipe = pipe; // manager pipe
 
     // if box doesnt exist send error message to manager
     if (get_box(client->box_name) == NULL) {

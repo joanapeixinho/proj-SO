@@ -1,8 +1,8 @@
 #include "../utils/common.h"
 #include "logging.h"
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <signal.h>
 
 int main(int argc, char **argv) {
     if (argc != 4) {
@@ -81,12 +81,13 @@ int main(int argc, char **argv) {
 
         bytes_written = try_write(
             pipe_fd, message, sizeof(uint8_t) + MESSAGE_LENGTH * sizeof(char));
-       
-        if (bytes_written == 0 || (bytes_written < 0 && errno == EPIPE)) { // The pipe is closed
+
+        if (bytes_written == 0 ||
+            (bytes_written < 0 && errno == EPIPE)) { // The pipe is closed
             safe_close(pipe_fd);
             printf("The pipe is closed. Exiting ...\n");
             return 0;
-        } else if (bytes_written < 0 ) { // An error occurred during writing
+        } else if (bytes_written < 0) { // An error occurred during writing
             safe_close(pipe_fd);
             fprintf(stderr, "Failed to write to pipe %s\n", pipe_name);
             return -1;
