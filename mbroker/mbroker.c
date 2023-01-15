@@ -624,7 +624,6 @@ int handle_messages_from_publisher(client_t *client){
             finish_client_session(client);
             return -1; //Close the server
         }
-        printf("=== Sent message to client %s: ===\n %s\n", client->client_pipename, message);
         safe_mutex_unlock(&box->lock);
     }
 
