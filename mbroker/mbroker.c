@@ -293,6 +293,7 @@ int finish_client_session(client_t *client) {
             client->box->n_subscribers--;
         }
     }
+    printf("Ended session for client %s\n", client->client_pipename);
     client->box_name[0] = '\0';
     client->client_pipename[0] = '\0';
     client->box = NULL;
@@ -580,23 +581,19 @@ int handle_messages_from_publisher(client_t *client) {
     while (true) {
         // Check if it returns EOF
         bytes_read = try_read(client->client_pipe, &opcode, sizeof(uint8_t));
-        if (bytes_read == 0 || (bytes_read < 0 && errno == EPIPE)) { // EOF
-            finish_client_session(client);
+        if (bytes_read <= 0) { // Pipe closed
+            printf("Pipe closed %s\n", client->client_pipename);
+            if(client->box != NULL) //If the session wasn't alredy finished
+                finish_client_session(client);
             return 0;
-        } else if (bytes_read < 0) { // Error
-            printf("Failed to read from pipe %s\n", client->client_pipename);
-            finish_client_session(client);
-            return -1;
         }
 
         bytes_read = try_read(client->client_pipe, message, MESSAGE_LENGTH);
-        if (bytes_read == 0 || (bytes_read < 0 && errno == EPIPE)) { // EOF
-            finish_client_session(client);
+        if (bytes_read <= 0) { // Pipe closed
+            printf("Pipe closed %s\n", client->client_pipename);
+            if(client->box != NULL) //If the session wasn't alredy finished
+                finish_client_session(client);
             return 0;
-        } else if (bytes_read < 0) { // Error
-            printf("Failed to read from pipe %s\n", client->client_pipename);
-            finish_client_session(client);
-            return -1;
         }
 
         box_t *box = client->box;
