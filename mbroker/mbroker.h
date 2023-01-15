@@ -6,11 +6,11 @@
 #include "config.h"
 #include "fs/operations.h"
 #include "logging.h"
-#include <signal.h>
 #include "string.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -74,5 +74,7 @@ int create_box(char *box_name);
 int compare_box_names(void *box, void *box_name);
 int compare_boxes(const void *box1, const void *box2);
 box_t *get_box(char *box_name);
+int remove_box(char *box_name);
+int get_free_box();
 
 #endif
