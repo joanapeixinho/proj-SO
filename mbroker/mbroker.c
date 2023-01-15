@@ -666,13 +666,23 @@ int handle_messages_to_subscriber(client_t *client){
             finish_client_session(client);
             return -1; //Close the server
         }
-        write_pipe(client->client_pipe, &opcode, sizeof(uint8_t));
-        bytes_written = try_write(client->client_pipe, message , MESSAGE_LENGTH );
-
-        if(bytes_written < 0){
+        bytes_written = try_write(client->client_pipe, &opcode, sizeof(uint8_t));
+        if(bytes_written == 0){
+            printf("Subscriber pipe closed: %d\n", client->client_pipe);
+            finish_client_session(client);
+            return 0; //Safely end this session
+        } else if(bytes_written < 1){
             printf("Failed to write to pipe %d\n", client->client_pipe);
             finish_client_session(client);
             return -1; //Close the server
+        }
+        
+        bytes_written = try_write(client->client_pipe, message , MESSAGE_LENGTH );
+
+        if(bytes_written == 0){
+            printf("Subscriber pipe closed: %d\n", client->client_pipe);
+            finish_client_session(client);
+            return 0; //Safely end this session
         } else if(bytes_written < MESSAGE_LENGTH){
             printf("Failed to write to pipe %d\n", client->client_pipe);
             finish_client_session(client);
