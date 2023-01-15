@@ -69,7 +69,7 @@ void print_buffer(char * buffer, int size);
 /* check if all the content was read from the pipe. */
 #define read_pipe(pipe, buffer, size)                                          \
     if (try_read(pipe, buffer, size) != size) {                                \
-        printf("Failed to read from pipe %d", pipe);                           \
+        printf("Failed to read from pipe %d\n", pipe);                           \
         return -1;                                                             \
     }
 

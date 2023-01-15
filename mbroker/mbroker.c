@@ -61,8 +61,10 @@ int main(int argc, char **argv) {
         return -1;
     }
 
+    
+    printf("Mbroker started...\n");
 
-    printf("====== mbroker iniciated. Waiting for request ======\n");
+    //Start the server
     for (;;) {
         /* Open and close a temporary pipe to avoid having active wait for another
          * process to open the pipe. The 'open' function blocks until the pipe
@@ -89,13 +91,12 @@ int main(int argc, char **argv) {
         ssize_t bytes_read;
         uint8_t op_code;
 
-        printf("Waiting for request...\n");
 
         bytes_read = try_read(server_pipe, &op_code, sizeof(uint8_t));
       
 
         while (bytes_read > 0) {
-            printf("Waiting for request...\n");
+        printf("Waiting for request...\n");
             if (parser(op_code) == -1) {
                 printf("Failed to parse request\n");
                 close_server(EXIT_FAILURE);
@@ -122,7 +123,7 @@ int mbroker_init() {
 
     if( pcq_create(&pc_queue, max_sessions) != 0 ) {
         free(clients);
-        perror("Failed to create producer-consumer queue");
+        printf("Failed to create producer-consumer queue\n");
         return -1;
     }
 
@@ -147,9 +148,7 @@ int mbroker_init() {
     for (int i = 0; i < MAX_BOXES; ++i) {
         free_boxes[i] = true; // all boxes are free in the beginning
     }
-
     num_boxes = 0;
-    
     return 0;
 }
 
@@ -163,11 +162,9 @@ void *client_session(void *client_in_array) {
             return NULL;
         }
         client->opcode = request->opcode;
-        printf("Received request %d from client %d\n", client->opcode, client->session_id);
 
         memcpy(client->client_pipename, request->client_pipename, CLIENT_NAMED_PIPE_PATH_LENGTH + 1);
-        printf("Client pipename: %s\n", client->client_pipename);
-
+    
         if( request->opcode != OP_CODE_LIST_BOXES) {
             memcpy(client->box_name, request->box_name, BOX_NAME_LENGTH + 1);
         }
@@ -178,11 +175,11 @@ void *client_session(void *client_in_array) {
 
         case OP_CODE_REGIST_PUB:
             result = handle_tfs_register(client);
-            printf("Ended publisher session.\n");
+            printf("Ended publisher session\n");
             break;
         case OP_CODE_REGIST_SUB:
             result = handle_tfs_register(client);
-            printf("Ended subscriber sessions.\n");
+            printf("Ended subscriber sessions\n");
             break;
         case OP_CODE_CREATE_BOX:
             result = handle_tfs_create_box(client);
@@ -200,7 +197,7 @@ void *client_session(void *client_in_array) {
 
         //Major error ocurred and we should close the server
         if(result == -1){
-            printf("==== Major error ocurred, closing server. ====\n");
+            
             close_server(EXIT_FAILURE);
             return NULL;
         }
@@ -260,8 +257,12 @@ int handle_tfs_register(client_t *client) {
 
 
 void close_server(int exit_code) {
+    
+    printf("Major error ocurred, closing server...\n");
+
     for (int i = 0; i < max_sessions; ++i) {
-            exit(EXIT_FAILURE);
+        free_client(i);
+        exit(EXIT_FAILURE);
     }
     pcq_destroy(&pc_queue);
     free(clients);
@@ -287,10 +288,11 @@ int finish_client_session(client_t *client) {
     //close client pipe
     safe_close(client->client_pipe);
 
-    if ( client->opcode!= OP_CODE_LIST_BOXES &&(client->box_fd) == -1) {
+    if (client->opcode!= OP_CODE_LIST_BOXES && (client->box_fd) == -1) {
         printf("Failed to close box %s\n", client->box_name);
         return -1;
     }
+
     if (client->box != NULL) {
         if (client->opcode == OP_CODE_REGIST_PUB) {
             client->box->n_publishers--;
@@ -308,13 +310,12 @@ int finish_client_session(client_t *client) {
    
 
 
-
 int parser(uint8_t op_code) {
     
     request_t* request = (request_t*) malloc(sizeof(request_t));
     
     if (request == NULL) {
-        perror("Failed to allocate memory");
+        printf("Failed to allocate memory for request\n");
         return -1;
     }
     //check if op_code is valid
@@ -347,7 +348,6 @@ int remove_box (char* box_name) {
         if(strcmp(boxes[i].box_name, box_name) == 0){
             free_boxes[i] = true;
             if (tfs_unlink(boxes[i].box_name) == -1) {
-                perror("Failed to unlink box");
                 return -1;
             }
             boxes[i].box_name[0] = '\0';
@@ -392,7 +392,7 @@ int handle_tfs_remove_box(client_t *client) {
     int pipe = open(client->client_pipename, O_WRONLY);
 
     if (pipe == -1) {
-        printf("Failed to open pipe");
+        printf("Failed to open pipe: %s\n", client->client_pipename);
         safe_mutex_unlock(&boxes_lock);
         return -1;
     }
@@ -400,7 +400,7 @@ int handle_tfs_remove_box(client_t *client) {
     client->client_pipe = pipe;
 
    
-    //if box doesnt exist print error
+    //if box doesnt send error message to manager
     if (get_box(client->box_name) == NULL) {
         strcpy(error_msg, "Box does not exist");
         return_code = -1;
@@ -591,7 +591,7 @@ int handle_messages_from_publisher(client_t *client){
             finish_client_session(client);
             return 0;
         } else if (bytes_read < 0){ //Error
-            printf("Failed to read from pipe %d\n", client->client_pipe);
+            printf("Failed to read from pipe %s\n", client->client_pipename);
             finish_client_session(client);
             return -1;
         }

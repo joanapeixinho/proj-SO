@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
 
     close(pipefd);
     close(register_pipefd);
-    return -1;
+    return 0;
 }
 
 //doesnt work when there's only one box
