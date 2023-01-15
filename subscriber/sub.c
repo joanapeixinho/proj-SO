@@ -53,9 +53,8 @@ int main(int argc, char **argv) {
     char message[MESSAGE_LENGTH + 1];      //The message has max 255 chars + a '\0' at the end
     ssize_t bytes_read;
     
-    while(true){
-        //Each message from the pipe is a new line
-        
+    while(true) {
+
         bytes_read = try_read(pipe_fd, &op_code, sizeof(uint8_t));
         if (bytes_read == 0) {
             fprintf(stderr, "Subscriber's pipe closed\n");
@@ -66,8 +65,9 @@ int main(int argc, char **argv) {
         }
 
         bytes_read = try_read(pipe_fd, message, MESSAGE_LENGTH*sizeof(char));
+        
         if (bytes_read == 0) {
-            fprintf(stderr, "Subscriber's pipe closed\n");
+            fprintf(stderr, "Subscriber's pipe closed\n"); 
             return 0;
         } else if (bytes_read < 0) {
             fprintf(stderr, "Failed to read from pipe\n");
