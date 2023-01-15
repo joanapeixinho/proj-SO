@@ -177,9 +177,11 @@ void *client_session(void *client_in_array) {
 
         case OP_CODE_REGIST_PUB:
             result = handle_tfs_register(client);
+            printf("Ended publisher session of pipe name: %s\n", client->client_pipename);
             break;
         case OP_CODE_REGIST_SUB:
             result = handle_tfs_register(client);
+            printf("Ended subscriber session of pipe name: %s\n", client->client_pipename);
             break;
         case OP_CODE_CREATE_BOX:
             result = handle_tfs_create_box(client);
