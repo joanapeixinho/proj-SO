@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
         }
 
         printf("sent message to register pipe\n");
-        
+
         read_pipe(pipefd, &return_op_code, sizeof(uint8_t));
         printf("received op code from register pipe\n");
         
@@ -148,16 +148,19 @@ int list_boxes (int pipefd) {
         while (last == 0) {
             
             read_pipe(pipefd, &op_code, sizeof(uint8_t));
-            if (op_code != OP_CODE_LIST_BOXES) {
+
+            if (op_code != OP_CODE_LIST_BOXES_ANSWER) {
                 fprintf(stderr, "ERROR: Unexpected operation code %d in list_boxes\n", op_code);
                 return -1;
             }
             read_pipe(pipefd,&last, sizeof(uint8_t));
-            
+           
             read_pipe(pipefd, boxes[count].box_name, BOX_NAME_LENGTH*sizeof(char));
+          
            //if box name is empty then there are no more boxes
             if (boxes[count].box_name[0] == '\0') {
                 fprintf(stdout, "NO BOXES FOUND\n");
+                return 0;
             }
             boxes[count].box_name[BOX_NAME_LENGTH] = '\0';
             read_pipe(pipefd, &boxes[count].box_size, sizeof(uint64_t));
