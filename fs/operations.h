@@ -1,9 +1,9 @@
 #ifndef OPERATIONS_H
 #define OPERATIONS_H
 
+#include "../utils/common.h"
 #include "config.h"
 #include <sys/types.h>
-#include "../utils/common.h"
 
 /**
  * TécnicoFS parameters.
@@ -32,7 +32,6 @@ int tfs_init(tfs_params const *params);
  * Returns 0 if successful, -1 otherwise.
  */
 int tfs_destroy();
-
 
 /**
  * Open a file.

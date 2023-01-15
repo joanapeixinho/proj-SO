@@ -1,8 +1,8 @@
 #ifndef __PRODUCER_CONSUMER_H__
 #define __PRODUCER_CONSUMER_H__
 
-#include <pthread.h>
 #include "../utils/common.h"
+#include <pthread.h>
 
 // IMPORTANT: do not change anything in this file
 //
