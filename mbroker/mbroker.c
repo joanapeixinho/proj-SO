@@ -88,13 +88,13 @@ int main(int argc, char **argv) {
         ssize_t bytes_read;
         uint8_t op_code;
 
-        printf("====== mbroker iniciated. Waiting for request ======\n");
+        printf("Waiting for request...\n");
 
         bytes_read = try_read(server_pipe, &op_code, sizeof(uint8_t));
       
 
         while (bytes_read > 0) {
-            printf("=========== Waiting for request ===========\n");
+            printf("Waiting for request...\n");
             if (parser(op_code) == -1) {
                 printf("Failed to parse request\n");
                 close_server(EXIT_FAILURE);
@@ -404,12 +404,10 @@ int handle_tfs_remove_box(client_t *client) {
         strcpy(error_msg, "Box does not exist");
         return_code = -1;
     }
-    printf("error msg: %s\n", error_msg);
 
     char box_name[BOX_NAME_LENGTH + 1] = {0};
     strcpy(box_name, client->box_name);
 
-    printf("Ending all client sessions with box %s\n", box_name);
    //end all client sessions with this box
     if (return_code != -1) {
         for (int i = 0; i < max_sessions; ++i) {
@@ -426,12 +424,9 @@ int handle_tfs_remove_box(client_t *client) {
         return -1;
     }
 
-   
-
     write_pipe(client->client_pipe, &op_code, sizeof(uint8_t));
     write_pipe(client->client_pipe, &return_code, sizeof(uint32_t));
     write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
-    printf("Sent error message: %s\n", error_msg);
     
     safe_mutex_unlock(&boxes_lock);
 
@@ -444,7 +439,7 @@ int handle_tfs_list_boxes (client_t *client) {
     //open client pipe
     int client_pipe = open(client->client_pipename, O_WRONLY);
     if (client_pipe < 0) {
-        printf("Failed to open pipe");
+        printf("Failed to open pipe\n");
         return -1;
     }
 
@@ -490,7 +485,7 @@ int handle_tfs_list_boxes (client_t *client) {
 
     //close client pipe
     if (finish_client_session(client) == -1) {
-        printf("Failed to finish client session");
+        printf("Failed to finish client session\n");
         return -1;
     }
 
@@ -504,7 +499,7 @@ int handle_tfs_create_box(client_t *client) {
     char error_msg[MESSAGE_LENGTH + 1] = {0};
 
     if (client->box_name == NULL) {
-        snprintf(error_msg, MESSAGE_LENGTH, "Box name is null\n");
+        snprintf(error_msg, MESSAGE_LENGTH, "Box name is null");
         return_code = -1;
     }
 
