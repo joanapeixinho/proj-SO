@@ -197,13 +197,13 @@ void *client_session(void *client_in_array) {
             break;
         }
 
-        //TODO What is this even for??
-        if (result != 0) {
-            /* if there is an error during the handling of the message, discard
-             * this session */
-            printf("Error handling request %d from client %d\n", client->opcode, client->session_id);
+        //Major error ocurred and we should close the server
+        if(result == -1){
+            printf("==== Major error ocurred, closing server. ====\n");
             close_server(EXIT_FAILURE);
+            return NULL;
         }
+   
     }
     return NULL;
 }
@@ -491,32 +491,28 @@ int handle_tfs_create_box(client_t *client) {
         return_code = -1;
     }
 
-    if (finish_client_session(client) == -1) {
-        snprintf(error_msg, MESSAGE_LENGTH, "Failed to finish client session");
-        return_code = -1;
+    int fhandle = tfs_open(client->box_name, TFS_O_CREAT);
+    if (fhandle < 0) {
+        printf("Failed to open box\n");
+        return -1;
+    } else {
+        client->box_fd = fhandle;
     }
+
 
     write_pipe(client->client_pipe, &opcode, sizeof(uint8_t));
     write_pipe(client->client_pipe, &return_code, sizeof(uint32_t));
     write_pipe(client->client_pipe, error_msg, sizeof(char)*MESSAGE_LENGTH);
 
-    return return_code;
+    // If at least one of them is -1 (not zero == true), return -1
+    return finish_client_session(client);
 }
 
 
 int create_box(char * box_name) {
     
-    int fhandle = tfs_open(box_name, TFS_O_CREAT);
-    
-    if (fhandle < 0) {
-        return -1;
-    }
-
-    tfs_close(fhandle);
     
     box_t *tmp_box = (box_t *) malloc(sizeof(box_t));
-
-
     if (tmp_box == NULL) {
         return -1;
     }
@@ -531,9 +527,7 @@ int create_box(char * box_name) {
     pthread_mutex_init(&tmp_box->lock, NULL);
     pthread_cond_init(&tmp_box->cond, NULL);
 
-
     num_boxes++;
-
 
     int box_id = get_free_box();
     if(box_id == -1){
@@ -558,7 +552,7 @@ int handle_messages_from_publisher(client_t *client){
     while(true){
         //Check if it returns EOF
         bytes_read = try_read(client->client_pipe, &opcode, sizeof(uint8_t));
-        if(bytes_read ==0){ //EOF 
+        if(bytes_read == 0){ //EOF 
             finish_client_session(client);
             return 0;
         } else if (bytes_read < 0){ //Error
@@ -569,21 +563,32 @@ int handle_messages_from_publisher(client_t *client){
 
         read_pipe(client->client_pipe, &message, MESSAGE_LENGTH);
         box_t* box = client->box;
+
         safe_mutex_lock(&box->lock);
         int fhandle = tfs_open(box->box_name, TFS_O_APPEND);
+        if(fhandle < 0){
+            printf("Failed to open box %s in tfs\n", box->box_name);
+            finish_client_session(client);
+            return -1; //Close the server
+        }
+
         bytes_written = tfs_write(fhandle, message, strlen(message) + 1);
         if(bytes_written < 0){
             printf("Failed to write to box %s in tfs\n", box->box_name);
             finish_client_session(client);
-            return -1;
+            return -1; //Close the server
         } else if(bytes_written < strlen(message) + 1){
             printf("Box %s is full\n", box->box_name);
             finish_client_session(client);
-            return -1;
+            return 0; //Finish this session but the box can still be used
         }
         box->box_size += strlen(message) + 1;
-        //Signal subscribers
-        pthread_cond_broadcast(&box->cond);
+        //Signal all subscribers
+        if(pthread_cond_broadcast(&box->cond)){
+            printf("Failed to broadcast condition\n");
+            finish_client_session(client);
+            return -1; //Close the server
+        }
         safe_mutex_unlock(&box->lock);
     }
 
@@ -591,7 +596,7 @@ int handle_messages_from_publisher(client_t *client){
         printf("Failed to finish client session\n");
         return -1;
     }
-    return 0;
+    return -1;
 }
 
 //read messages from subscriber's box and send to client
@@ -607,10 +612,13 @@ int handle_messages_to_subscriber(client_t *client){
 
     while(true){
         safe_mutex_lock(&box->lock);
-
         //Wait until there is more to read
         while ((box->box_size - (uint64_t) client->offset) == 0) {
-            pthread_cond_wait(&box->cond, &box->lock);
+            if(pthread_cond_wait(&box->cond, &box->lock)){
+                printf("Failed to wait on condition\n");
+                finish_client_session(client);
+                return -1; //Close the server
+            }
         }
         safe_mutex_unlock(&box->lock);
          
@@ -621,7 +629,7 @@ int handle_messages_to_subscriber(client_t *client){
         } else if (bytes_read < 0){ //Error
             printf("Failed to read from box %s in tfs\n", box->box_name);
             finish_client_session(client);
-            return -1;
+            return -1; //Close the server
         }
         write_pipe(client->client_pipe, &opcode, sizeof(uint8_t));
         bytes_written = try_write(client->client_pipe, message , MESSAGE_LENGTH );
@@ -629,20 +637,19 @@ int handle_messages_to_subscriber(client_t *client){
         if(bytes_written < 0){
             printf("Failed to write to pipe %d\n", client->client_pipe);
             finish_client_session(client);
-            return -1;
+            return -1; //Close the server
         } else if(bytes_written < MESSAGE_LENGTH){
             printf("Failed to write to pipe %d\n", client->client_pipe);
             finish_client_session(client);
-            return -1;
+            return -1; //Close the server
         }
         client->offset += bytes_read; //It's supposed to be equal to bytes_written
     }
 
     if (finish_client_session(client) == -1) {
         printf("Failed to finish client session\n");
-        return -1;
+        return -1; //Close the server
     }
-
     return 0;
 }
 
@@ -656,6 +663,11 @@ int handle_messages_until_now(client_t *client){
     ssize_t bytes_read;
     ssize_t tmp_offset;
     client->box_fd = tfs_open(client->box->box_name, TFS_O_APPEND);
+    if(client->box_fd < 0){
+        printf("Failed to open box %s in tfs\n", client->box->box_name);
+        finish_client_session(client);
+        return -1; //Close the server
+    }
     while((client->box->box_size - (uint64_t) client->offset) > 0){
 
         bytes_read = tfs_read(client->box_fd, buffer, MESSAGE_LENGTH);
@@ -664,7 +676,7 @@ int handle_messages_until_now(client_t *client){
         } else if (bytes_read < 0){ //Error
             printf("Failed to read from box %s in tfs\n", client->box->box_name);
             finish_client_session(client);
-            return -1;
+            return -1; //Close the server
         }
 
         tmp_offset = 0;
@@ -680,10 +692,11 @@ int handle_messages_until_now(client_t *client){
 
         client->offset += bytes_read; 
     }
+    safe_mutex_unlock(&client->box->lock);
+
     if (finish_client_session(client) == -1) {
         printf("Failed to finish client session\n");
         return -1;
     }
-    safe_mutex_unlock(&client->box->lock);
     return 0;
 }
