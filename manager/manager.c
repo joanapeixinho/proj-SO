@@ -44,9 +44,6 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-   
-
-
     if (strcmp(command, "create") == 0 || strcmp(command, "remove") == 0) {
         if (argc != 5) {
             print_usage();
@@ -74,27 +71,19 @@ int main(int argc, char **argv) {
 
         write_pipe(register_pipefd, buffer, sizeof(uint8_t) + (CLIENT_NAMED_PIPE_PATH_LENGTH+BOX_NAME_LENGTH)*sizeof(char));
         
-        printf("sent message to register pipe\n");
         
         pipefd = open(pipe_name, O_RDONLY);
 
-        printf("opened pipe\n");
 
         if (pipefd < 0) {
         fprintf(stderr, "Error opening pipe %s for reading\n", pipe_name);
         return -1;
         }
 
-        printf("sent message to register pipe\n");
-        
         read_pipe(pipefd, &return_op_code, sizeof(uint8_t));
-        printf("received op code from register pipe\n");
-        
         read_pipe(pipefd, &return_code, sizeof(int32_t));
-        printf("received return code from register pipe\n");
-
         read_pipe(pipefd, error_message, MESSAGE_LENGTH*sizeof(char));
-        printf("received error message from register pipe\n");
+
         error_message[MESSAGE_LENGTH] = '\0';
 
         if (return_code == 0) {
@@ -148,16 +137,19 @@ int list_boxes (int pipefd) {
         while (last == 0) {
             
             read_pipe(pipefd, &op_code, sizeof(uint8_t));
-            if (op_code != OP_CODE_LIST_BOXES) {
+
+            if (op_code != OP_CODE_LIST_BOXES_ANSWER) {
                 fprintf(stderr, "ERROR: Unexpected operation code %d in list_boxes\n", op_code);
                 return -1;
             }
             read_pipe(pipefd,&last, sizeof(uint8_t));
-            
+           
             read_pipe(pipefd, boxes[count].box_name, BOX_NAME_LENGTH*sizeof(char));
+          
            //if box name is empty then there are no more boxes
             if (boxes[count].box_name[0] == '\0') {
                 fprintf(stdout, "NO BOXES FOUND\n");
+                return 0;
             }
             boxes[count].box_name[BOX_NAME_LENGTH] = '\0';
             read_pipe(pipefd, &boxes[count].box_size, sizeof(uint64_t));
