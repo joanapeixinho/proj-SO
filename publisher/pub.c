@@ -2,6 +2,7 @@
 #include "logging.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <signal.h>
 
 int main(int argc, char **argv) {
     if (argc != 4) {
@@ -9,6 +10,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
+    signal(SIGPIPE, SIG_IGN); // Ignore SIGPIPE to treat closed pipe
     char *register_pipe = argv[1];
     char *pipe_name = argv[2];
 
@@ -79,14 +81,15 @@ int main(int argc, char **argv) {
 
         bytes_written = try_write(
             pipe_fd, message, sizeof(uint8_t) + MESSAGE_LENGTH * sizeof(char));
-        if (bytes_written < 0) { // An error occurred during writing
-            safe_close(pipe_fd);
-            fprintf(stderr, "Failed to write to pipe %s\n", pipe_name);
-            return -1;
-        } else if (bytes_written == 0) { // The pipe is closed
+       
+        if (bytes_written == 0 || (bytes_written < 0 && errno == EPIPE)) { // The pipe is closed
             safe_close(pipe_fd);
             printf("The pipe is closed. Exiting ...\n");
             return 0;
+        } else if (bytes_written < 0 ) { // An error occurred during writing
+            safe_close(pipe_fd);
+            fprintf(stderr, "Failed to write to pipe %s\n", pipe_name);
+            return -1;
         }
     }
     return -1;
