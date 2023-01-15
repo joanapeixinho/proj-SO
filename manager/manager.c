@@ -172,7 +172,6 @@ int list_boxes (int pipefd) {
         for (int i = 0; i < count; i++) {
             fprintf(stdout, "%s %zu %zu %zu\n", boxes[i].box_name, boxes[i].box_size, boxes[i].n_publishers, boxes[i].n_subscribers);
         }
-
         return 0;
 }
 

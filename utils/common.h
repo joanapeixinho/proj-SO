@@ -81,7 +81,7 @@ void print_buffer(char * buffer, int size);
 
 #define safe_close(fd)\
     if (close(fd) < 0)  {\
-        printf("Failed to write to close file %d", fd);\
+        printf("Failed to close file %d", fd);\
         return -1;\
     }
 

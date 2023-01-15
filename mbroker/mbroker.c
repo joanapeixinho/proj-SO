@@ -183,15 +183,12 @@ void *client_session(void *client_in_array) {
             break;
         case OP_CODE_CREATE_BOX:
             result = handle_tfs_create_box(client);
-            printf("Created box: %s\n", client->box_name);
             break;
         case OP_CODE_REMOVE_BOX:
             result = handle_tfs_remove_box(client);
-            printf("Removed box: %s\n", client->box_name);
             break;
         case OP_CODE_LIST_BOXES:
             result = handle_tfs_list_boxes(client);
-            printf("List boxes handled for manager: %s\n", client->client_pipename);
             break;
        
         default:
@@ -227,6 +224,7 @@ int handle_tfs_register(client_t *client) {
         printf("Failed to open pipe");
         return -1;
     }
+
     client->client_pipe = client_pipe;
 
     //Try to get the box
@@ -258,13 +256,6 @@ int handle_tfs_register(client_t *client) {
 }
 
 
-
-
-
-
-
-
-
 void close_server(int exit_code) {
     for (int i = 0; i < max_sessions; ++i) {
             exit(EXIT_FAILURE);
@@ -285,6 +276,17 @@ int free_client (int session_id) {
         perror("Failed to close pipe");
         return -1;
     }
+  
+    return 0;
+}
+
+int finish_client_session(client_t *client) {
+    //close client pipe
+    safe_close(client->client_pipe);
+
+    if (tfs_close(client->box_fd) == -1) {
+        return -1;
+    }
     if (client->box != NULL) {
         if (client->opcode == OP_CODE_REGIST_PUB) {
             client->box->n_publishers--;
@@ -292,14 +294,16 @@ int free_client (int session_id) {
             client->box->n_subscribers--;
         }
     }
+    client->box_name[0] = '\0';
+    client->client_pipename[0] = '\0';
+    client->box = NULL;
+    client->box_fd = -1;
+    client->client_pipe = -1;
     return 0;
 }
+   
 
-void print_request (request_t* request) {
-    printf("Opcode: %d\n", request->opcode);
-    printf("Client pipename: %s\n", request->client_pipename);
-    printf("Box name: %s\n", request->box_name);
-}
+
 
 int parser(uint8_t op_code) {
     
@@ -362,19 +366,21 @@ box_t* get_box(char *box_name) {
     for (int i = 0; i < MAX_BOXES; ++i) {
         if (strcmp(boxes[i].box_name, box_name) == 0) {
             return &boxes[i];
+            num_boxes--;
         }
     }
     return NULL;
 }
 
+
+
 int handle_tfs_remove_box(client_t *client) {
 
-    //remove box from linkedlist using remove_by_value
     safe_mutex_lock(&boxes_lock);
     char error_msg[MESSAGE_LENGTH +1] = {0};
     //if box doesnt exist print error
     if (get_box(client->box_name) == NULL) {
-        strcpy(error_msg, "Box does not exist\n");
+        strcpy(error_msg, "Box does not exist");
         //send error response to pipe
         write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
         safe_close(client->client_pipe);
@@ -382,24 +388,27 @@ int handle_tfs_remove_box(client_t *client) {
         return -1;
     }
 
+
+   //end all client sessions with this box
+    for (int i = 0; i < max_sessions; ++i) {
+       
+        if (strcmp(clients[i].box_name, client->box_name) == 0) {
+           if( finish_client_session(&clients[i]) == -1){
+               strcpy(error_msg, "Failed to finish client session");
+               write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
+               safe_mutex_unlock(&boxes_lock);
+               return -1;
+           }
+        }
+    }
+    
     if (remove_box(get_box(client->box_name)) == -1) {
-        strcpy(error_msg, "Failed to remove box\n");
+        strcpy(error_msg, "Failed to remove box");
         write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
         safe_close(client->client_pipe);
         safe_mutex_unlock(&boxes_lock);
         return -1;
     }
-
-   //end all client sessions with this box
-    for (int i = 0; i < max_sessions; ++i) {
-        if (strcmp(clients[i].box_name, client->box_name) == 0) {
-                safe_close(client->client_pipe);
-                safe_mutex_unlock(&boxes_lock);
-                return -1;
-        }
-    }
-
-    tfs_unlink(client->box_name);
 
     safe_mutex_unlock(&boxes_lock);
     return 0;
@@ -439,7 +448,10 @@ int handle_tfs_list_boxes (client_t *client) {
         i++;
     }
     //close client pipe
-    safe_close(client_pipe);
+    if (finish_client_session(client) == -1) {
+        perror("Failed to finish client session");
+        return -1;
+    }
 
     return 0;
 }
@@ -456,39 +468,39 @@ int handle_tfs_create_box(client_t *client) {
     }
 
     if (return_code == 0 && num_boxes == MAX_BOXES) {
-        snprintf(error_msg, MESSAGE_LENGTH, "Reached max number of boxes\n");        
+        snprintf(error_msg, MESSAGE_LENGTH, "Reached max number of boxes");        
         return_code = -1;
     }
-    printf(">>>>trying to get box: %s\n", client->box_name);
+   
     if (return_code == 0 && get_box(client->box_name) != NULL) {
-        snprintf(error_msg, MESSAGE_LENGTH, "Box already exists\n");
+        snprintf(error_msg, MESSAGE_LENGTH, "Box already exists");
         return_code = -1;
     }
-    printf(">>>>trying to Create box: %s\n", client->box_name);
+   
     if (return_code == 0 && create_box(client->box_name) < 0) {
-        snprintf(error_msg, MESSAGE_LENGTH, "Failed to create box\n");
+        snprintf(error_msg, MESSAGE_LENGTH, "Failed to create box");
         return_code = -1;
     }
     safe_mutex_unlock(&boxes_lock);
 
     client->client_pipe = open(client->client_pipename, O_WRONLY);
     if (client->client_pipe < 0) {
-        perror("Failed to open pipe");
-        return -1;
+        snprintf(error_msg, MESSAGE_LENGTH, "Failed to open pipe");
+        return_code = -1;
+    }
+
+    if (finish_client_session(client) == -1) {
+        snprintf(error_msg, MESSAGE_LENGTH, "Failed to finish client session");
+        return_code = -1;
     }
 
     write_pipe(client->client_pipe, &opcode, sizeof(uint8_t));
     write_pipe(client->client_pipe, &return_code, sizeof(uint32_t));
     write_pipe(client->client_pipe, error_msg, sizeof(char)*MESSAGE_LENGTH);
-    safe_close(client->client_pipe);
+
     return return_code;
 }
-void print_box (box_t *box) {
-    printf("Box name: %s\n", box->box_name);
-    printf("Box size: %lu\n", box->box_size);
-    printf("Number of publishers: %lu\n", box->n_publishers);
-    printf("Number of subscribers: %lu\n", box->n_subscribers);
-}
+
 
 int create_box(char * box_name) {
     
@@ -520,7 +532,6 @@ int create_box(char * box_name) {
 
     num_boxes++;
 
-    print_box(tmp_box);
 
     int box_id = get_free_box();
     if(box_id == -1){
@@ -546,11 +557,11 @@ int handle_messages_from_publisher(client_t *client){
         //Check if it returns EOF
         bytes_read = try_read(client->client_pipe, &opcode, sizeof(uint8_t));
         if(bytes_read ==0){ //EOF 
-            safe_close(client->client_pipe);
+            finish_client_session(client);
             return 0;
         } else if (bytes_read < 0){ //Error
             printf("Failed to read from pipe %d\n", client->client_pipe);
-            safe_close(client->client_pipe);
+            finish_client_session(client);
             return -1;
         }
 
@@ -561,22 +572,23 @@ int handle_messages_from_publisher(client_t *client){
         bytes_written = tfs_write(fhandle, message, strlen(message) + 1);
         if(bytes_written < 0){
             printf("Failed to write to box %s in tfs\n", box->box_name);
-            tfs_close(fhandle);
-            safe_close(client->client_pipe);
+            finish_client_session(client);
             return -1;
         } else if(bytes_written < strlen(message) + 1){
             printf("Box %s is full\n", box->box_name);
-            safe_close(client->client_pipe);
-            tfs_close(fhandle);
+            finish_client_session(client);
             return -1;
         }
         box->box_size += strlen(message) + 1;
-        tfs_close(fhandle);
         //Signal subscribers
         pthread_cond_broadcast(&box->cond);
         safe_mutex_unlock(&box->lock);
     }
 
+    if (finish_client_session(client) == -1) {
+        printf("Failed to finish client session\n");
+        return -1;
+    }
     return 0;
 }
 
@@ -606,7 +618,7 @@ int handle_messages_to_subscriber(client_t *client){
             break;
         } else if (bytes_read < 0){ //Error
             printf("Failed to read from box %s in tfs\n", box->box_name);
-            tfs_close(client->box_fd);
+            finish_client_session(client);
             return -1;
         }
         write_pipe(client->client_pipe, &opcode, sizeof(uint8_t));
@@ -614,17 +626,21 @@ int handle_messages_to_subscriber(client_t *client){
 
         if(bytes_written < 0){
             printf("Failed to write to pipe %d\n", client->client_pipe);
-            tfs_close(client->box_fd);
-            safe_close(client->client_pipe);
+            finish_client_session(client);
             return -1;
         } else if(bytes_written < MESSAGE_LENGTH){
             printf("Failed to write to pipe %d\n", client->client_pipe);
-            tfs_close(client->box_fd);
-            safe_close(client->client_pipe);
+            finish_client_session(client);
             return -1;
         }
         client->offset += bytes_read; //It's supposed to be equal to bytes_written
     }
+
+    if (finish_client_session(client) == -1) {
+        printf("Failed to finish client session\n");
+        return -1;
+    }
+
     return 0;
 }
 
@@ -645,8 +661,7 @@ int handle_messages_until_now(client_t *client){
             break;
         } else if (bytes_read < 0){ //Error
             printf("Failed to read from box %s in tfs\n", client->box->box_name);
-            tfs_close(client->box_fd);
-            safe_close(client->client_pipe);
+            finish_client_session(client);
             return -1;
         }
 
@@ -662,6 +677,10 @@ int handle_messages_until_now(client_t *client){
         }
 
         client->offset += bytes_read; 
+    }
+    if (finish_client_session(client) == -1) {
+        printf("Failed to finish client session\n");
+        return -1;
     }
     safe_mutex_unlock(&client->box->lock);
     return 0;
