@@ -286,7 +286,8 @@ int finish_client_session(client_t *client) {
     //close client pipe
     safe_close(client->client_pipe);
 
-    if (tfs_close(client->box_fd) == -1) {
+    if ( client->opcode!= OP_CODE_LIST_BOXES &&(client->box_fd) == -1) {
+        printf("Failed to close box %s\n", client->box_name);
         return -1;
     }
     if (client->box != NULL) {
@@ -340,9 +341,9 @@ int parser(uint8_t op_code) {
     return 0;
 } 
 
-int remove_box (box_t *box) {
+int remove_box (char* box_name) {
     for(int i = 0; i < MAX_BOXES; i++){
-        if(strcmp(boxes[i].box_name, box->box_name) == 0){
+        if(strcmp(boxes[i].box_name, box_name) == 0){
             free_boxes[i] = true;
             if (tfs_unlink(boxes[i].box_name) == -1) {
                 perror("Failed to unlink box");
@@ -380,49 +381,64 @@ int handle_tfs_remove_box(client_t *client) {
 
     safe_mutex_lock(&boxes_lock);
     char error_msg[MESSAGE_LENGTH +1] = {0};
-    //if box doesnt exist print error
-    if (get_box(client->box_name) == NULL) {
-        strcpy(error_msg, "Box does not exist");
-        //send error response to pipe
-        write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
-        safe_close(client->client_pipe);
+    int32_t return_code = 0;
+    uint8_t op_code = OP_CODE_REMOVE_BOX_ANSWER;
+
+    int pipe = open(client->client_pipename, O_WRONLY);
+
+    if (pipe == -1) {
+        printf("Failed to open pipe");
         safe_mutex_unlock(&boxes_lock);
         return -1;
     }
 
+    client->client_pipe = pipe;
+
+    //if box doesnt exist print error
+    if (get_box(client->box_name) == NULL) {
+        strcpy(error_msg, "Box does not exist");
+        return_code = -1;
+    }
+
+    char box_name[BOX_NAME_LENGTH + 1] = {0};
+    strcpy(box_name, client->box_name);
 
    //end all client sessions with this box
     for (int i = 0; i < max_sessions; ++i) {
        
-        if (strcmp(clients[i].box_name, client->box_name) == 0) {
-           if( finish_client_session(&clients[i]) == -1){
+        if (return_code != -1 && strcmp(clients[i].box_name, box_name) == 0) {
+           if( i!= client->session_id && finish_client_session(&clients[i]) == -1){
                strcpy(error_msg, "Failed to finish client session");
-               write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
-               safe_mutex_unlock(&boxes_lock);
-               return -1;
+               return_code = -1;
            }
         }
     }
     
-    if (remove_box(get_box(client->box_name)) == -1) {
+    if (return_code!= -1 && remove_box(box_name) == -1) {
         strcpy(error_msg, "Failed to remove box");
-        write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
-        safe_close(client->client_pipe);
-        safe_mutex_unlock(&boxes_lock);
-        return -1;
+        return_code = -1;
     }
 
+
+    write_pipe(client->client_pipe, &op_code, sizeof(uint8_t));
+    write_pipe(client->client_pipe, &return_code, sizeof(uint32_t)* MESSAGE_LENGTH);
+    write_pipe(client->client_pipe, error_msg, sizeof(char)* MESSAGE_LENGTH);
+    
     safe_mutex_unlock(&boxes_lock);
-    return 0;
+
+    return finish_client_session(client);
 }
+
+
 
 int handle_tfs_list_boxes (client_t *client) {
     //open client pipe
     int client_pipe = open(client->client_pipename, O_WRONLY);
     if (client_pipe < 0) {
-        perror("Failed to open pipe");
+        printf("Failed to open pipe");
         return -1;
     }
+    client->client_pipe = client_pipe;
     
     char buffer[sizeof(uint8_t) * 2 + BOX_NAME_LENGTH + sizeof(uint64_t) * 3]; 
     uint8_t last = 0;
@@ -433,8 +449,13 @@ int handle_tfs_list_boxes (client_t *client) {
 
     int i = 0;
     
-    while (i < num_boxes) {
+    while (i < MAX_BOXES) {
+        if (free_boxes[i] == true) {
+            i++;
+            continue;
+        }
         box_t box = boxes[i];
+    
         memcpy(buffer, &client->opcode, sizeof(uint8_t));
         
         if (i == num_boxes - 1) {
@@ -446,12 +467,13 @@ int handle_tfs_list_boxes (client_t *client) {
         memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH, &box.box_size, sizeof(uint64_t));
         memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t), &box.n_publishers, sizeof(uint64_t));
         memcpy(buffer + sizeof(uint8_t)*2 + sizeof(char)*BOX_NAME_LENGTH + sizeof(uint64_t)*2, &box.n_subscribers, sizeof(uint64_t));
+        
         write_pipe(client_pipe, buffer, sizeof(uint8_t) * 2 + BOX_NAME_LENGTH + sizeof(uint64_t) * 3);
         i++;
     }
     //close client pipe
     if (finish_client_session(client) == -1) {
-        perror("Failed to finish client session");
+        printf("Failed to finish client session");
         return -1;
     }
 

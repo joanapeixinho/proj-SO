@@ -86,6 +86,7 @@ int main(int argc, char **argv) {
         }
 
         printf("sent message to register pipe\n");
+        
         read_pipe(pipefd, &return_op_code, sizeof(uint8_t));
         printf("received op code from register pipe\n");
         
