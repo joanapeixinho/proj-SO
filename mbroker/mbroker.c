@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 
     tfs_params params = {
         .max_inode_count = MAX_BOXES,
-        .max_block_count = 1024,
+        .max_block_count = MESSAGE_LENGTH * MAX_BOXES,
         .max_open_files_count = MAX_BOXES,
         .block_size = BOX_SIZE,
     };
